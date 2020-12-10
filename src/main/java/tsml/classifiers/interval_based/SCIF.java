@@ -158,7 +158,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     protected static final long serialVersionUID = 1L;
 
     /**
-     * Default constructor for CIF. Can estimate own performance.
+     * Default constructor for SCIF. Can estimate own performance.
      */
     public SCIF(){
         super(CAN_ESTIMATE_OWN_PERFORMANCE);
@@ -255,7 +255,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     }
 
     /**
-     * Outputs CIF parameters information as a String.
+     * Outputs SCIF parameters information as a String.
      *
      * @return String written to results files
      */
@@ -272,10 +272,10 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     }
 
     /**
-     * Returns the capabilities for CIF. These are that the
+     * Returns the capabilities for SCIF. These are that the
      * data must be numeric or relational, with no missing and a nominal class
      *
-     * @return the capabilities of CIF
+     * @return the capabilities of SCIF
      */
     @Override //AbstractClassifier
     public Capabilities getCapabilities(){
@@ -295,10 +295,10 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     }
 
     /**
-     * Returns the time series capabilities for CIF. These are that the
+     * Returns the time series capabilities for SCIF. These are that the
      * data must be equal length, with no missing values
      *
-     * @return the time series capabilities of CIF
+     * @return the time series capabilities of SCIF
      */
     public TSCapabilities getTSCapabilities(){
         TSCapabilities capabilities = new TSCapabilities();
@@ -309,7 +309,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     }
 
     /**
-     * Build the CIF classifier.
+     * Build the SCIF classifier.
      *
      * @param data TimeSeriesInstances object
      * @throws Exception unable to train model
@@ -452,10 +452,10 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
         testHolder.add(in);
 
         if (multiThread){
-            multiThreadBuildCIF(representations, result);
+            multiThreadBuildSCIF(representations, result);
         }
         else{
-            buildCIF(representations, result);
+            buildSCIF(representations, result);
         }
 
         if(trees.size() == 0){//Not enough time to build a single classifier
@@ -484,7 +484,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     }
 
     /**
-     * Build the CIF classifier.
+     * Build the SCIF classifier.
      *
      * @param data weka Instances object
      * @throws Exception unable to train model
@@ -495,7 +495,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     }
 
     /**
-     * Build the CIF classifier
+     * Build the SCIF classifier
      * For each base classifier
      *     generate random intervals
      *     do the transfrorms
@@ -503,7 +503,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
      *
      * @throws Exception unable to build SCIF
      */
-    public void buildCIF(TimeSeriesInstances[] representations, Instances result) throws Exception {
+    public void buildSCIF(TimeSeriesInstances[] representations, Instances result) throws Exception {
         double[][][][] dimensions =  new double[representations.length][][][];
         for (int r = 0; r < representations.length; r++){
             dimensions[r] = representations[r].toValueArray();
@@ -718,7 +718,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
      * @param result Instances object formatted for transformed data
      * @throws Exception unable to build SCIF
      */
-    private void multiThreadBuildCIF(TimeSeriesInstances[] representations, Instances result) throws Exception {
+    private void multiThreadBuildSCIF(TimeSeriesInstances[] representations, Instances result) throws Exception {
         double[][][][] dimensions =  new double[representations.length][][][];
         for (int r = 0; r < representations.length; r++){
             dimensions[r] = representations[r].toValueArray();
