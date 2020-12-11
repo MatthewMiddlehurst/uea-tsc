@@ -454,6 +454,19 @@ public class Experiments  {
         testFoldExists = CollateResults.validateSingleFoldFile(expSettings.testFoldFileName);
         trainFoldExists = CollateResults.validateSingleFoldFile(expSettings.trainFoldFileName);
 
+
+        if (trainFoldExists){
+            try {
+                ClassifierResults cr = new ClassifierResults(expSettings.trainFoldFileName);
+                if (!cr.getClassifierName().equals("TDE50M") && !cr.getClassifierName().equals("SCIF") && !cr.getClassifierName().equals("ROCKET7")){
+                    System.exit(0);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+
         // If needed, build/make the directory to write any supporting files to, e.g. checkpointing files
         // [writeLoc]/[classifier]/Workspace/[dataset]/[fold]/
         // todo foreseeable problems with threaded experiments:
