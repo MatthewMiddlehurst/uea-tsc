@@ -235,7 +235,7 @@ public class LEFTIST {
         double[] instVals = inst.toValueArray()[0];
         double[][] transformedNeighbours = new double[noNeighbours][];
         for (int i = 0; i < noNeighbours; i++){
-            transformedNeighbours[i] = train.get(rand.nextInt(train.numInstances())).toValueArray()[0]; //should we be sampling from train?
+            transformedNeighbours[i] = train.get(rand.nextInt(train.numInstances())).toValueArray()[0];
             for (int n = 0 ; n < noSlices; n++){
                 if (activatedSlices[i][n] == 1){
                     System.arraycopy(instVals, slices[n][0], transformedNeighbours[i], slices[n][0],
@@ -361,8 +361,29 @@ public class LEFTIST {
         return usedFeatures;
     }
 
-    private double score(Classifier cls, Instances insts){
-        return 0;
+    private double score(Classifier cls, Instances insts) throws Exception {
+        double[] preds = new double[insts.numInstances()];
+        int mean = 0;
+        int weightSum = 0;
+        for (int i = 0 ; i < preds.length; i++){
+            Instance inst = insts.get(i);
+
+            preds[i] = cls.classifyInstance(inst);
+            mean += inst.classValue() * inst.weight();
+            weightSum += inst.weight();
+        }
+        mean /= weightSum;
+
+        double n = 0;
+        double d = 0;
+        for (int i = 0; i < preds.length; i++){
+            Instance inst = insts.get(i);
+
+            n += inst.weight() * Math.pow(inst.classValue() - preds[i], 2);
+            d += inst.weight() * Math.pow(inst.classValue() - mean, 2);
+        }
+
+        return d != 0 ? 1 - n / d : 0;
     }
 
     public static class Explanation {

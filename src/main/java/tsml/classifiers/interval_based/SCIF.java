@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
+import static utilities.ArrayUtilities.sum;
 import static utilities.StatisticalUtilities.median;
 import static utilities.Utilities.argMax;
 
@@ -49,6 +50,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
         Checkpointable, Tuneable, MultiThreadable, Visualisable, Interpretable {
 
     public boolean reduceIntervals = false;
+    public boolean reduceIntervals2 = false;
     public boolean trainpred = false;
     public boolean intervalCV = false;
 
@@ -87,7 +89,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
     /** IntervalsFinders sets parameter values in buildClassifier if -1. */
     /** Num intervals selected per representation per tree built */
-    private int numIntervals = -1;
+    private int[] numIntervals;
     private transient Function<Integer,Integer> numIntervalsFinder;
 
     /** Secondary parameters */
@@ -156,7 +158,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     private transient Catch22 c22;
 
     /** Transformers used for other representations **/
-    private transient PowerSpectrum ps;
+    private transient Transformer ps;
     private transient Differences di;
 
     protected static final long serialVersionUID = 1L;
@@ -268,10 +270,11 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
         int nt = numClassifiers;
         if (trees != null) nt = trees.size();
         String temp=super.getParameters()+",numTrees,"+nt+",attSubsampleSize,"+attSubsampleSize+
-                ",outlierNorm,"+outlierNorm+",basicSummaryStats,"+useSummaryStats+",numIntervals,"+numIntervals+
-                ",minIntervalLength,"+minIntervalLength+",maxIntervalLength,"+maxIntervalLength+
-                ",baseClassifier,"+base.getClass().getSimpleName()+",bagging,"+bagging+
-                ",estimator,"+estimator.name()+",contractTime,"+contractTime;
+                ",outlierNorm,"+outlierNorm+",basicSummaryStats,"+useSummaryStats+",numIntervals,"+
+                Arrays.toString(numIntervals)+",minIntervalLength,"+Arrays.toString(minIntervalLength)+
+                ",maxIntervalLength,"+Arrays.toString(maxIntervalLength)+ ",baseClassifier,"+
+                base.getClass().getSimpleName()+",bagging,"+ bagging+",estimator,"+estimator.name()+
+                ",contractTime,"+contractTime;
         return temp;
     }
 
@@ -336,11 +339,24 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
         TimeSeriesInstances[] representations = new TimeSeriesInstances[3];
         representations[0] = data;
-        ps = new PowerSpectrum();
-        representations[1] = ps.transform(representations[0]);
+
+        if (reduceIntervals2) {
+            ps = new Fast_FFT();
+            ((Fast_FFT)ps).nearestPowerOF2(representations[0].getMaxLength());
+            representations[1] = ps.transform(representations[0]);
+        }
+        else {
+            ps = new PowerSpectrum();
+            representations[1] = ps.transform(representations[0]);
+        }
+
         di = new Differences();
         di.setSubtractFormerValue(true);
         representations[2] = di.transform(representations[0]);
+
+        System.out.println(representations[0].getMaxLength());
+        System.out.println(representations[1].getMaxLength());
+        System.out.println(representations[2].getMaxLength());
 
         File file = new File(checkpointPath + "SCIF" + seed + ".ser");
         //if checkpointing and serialised files exist load said files
@@ -355,17 +371,26 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             numInstances = data.numInstances();
             numDimensions = data.getMaxNumChannels();
 
-            if (numIntervalsFinder == null){
-                if (reduceIntervals) numIntervals = (int)(4 + (Math.sqrt(representations[0].getMaxLength()) * Math.sqrt(numDimensions))/3);
-                else numIntervals = (int)(4 + (Math.sqrt(representations[0].getMaxLength()) * Math.sqrt(numDimensions))/2);
-            }
-            else {
-                numIntervals = numIntervalsFinder.apply(representations[0].getMaxLength());
-            }
-
+            numIntervals = new int[representations.length];
             minIntervalLength = new int[representations.length];
             maxIntervalLength = new int[representations.length];
             for (int r = 0; r < 3; r++) {
+                if (numIntervalsFinder == null){
+                    if (reduceIntervals){
+                        numIntervals[r] = (int)(4 + (Math.sqrt(representations[0].getMaxLength()) * Math.sqrt(numDimensions))/3);
+                        if (r == 1) numIntervals[r] /= 2;
+                    }
+                    else if (reduceIntervals2){
+                        numIntervals[r] = (int)(4 + (Math.sqrt(representations[r].getMaxLength()) * Math.sqrt(numDimensions))/3);
+                    }
+                    else {
+                        numIntervals[r] = (int)(4 + (Math.sqrt(representations[0].getMaxLength()) * Math.sqrt(numDimensions))/2);
+                    }
+                }
+                else {
+                    numIntervals[r] = numIntervalsFinder.apply(representations[0].getMaxLength());
+                }
+
                 if (minIntervalLengthFinder == null) {
                     minIntervalLength[r] = 3;
                 } else {
@@ -430,14 +455,10 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             if (checkpoint) System.out.println("Unable to checkpoint until end of build when multi threading.");
         }
 
-        int ni;
-        if (reduceIntervals) ni = numIntervals*2 + numIntervals/2;
-        else ni = numIntervals*representations.length;
-
         //Set up instances size and format.
         ArrayList<Attribute> atts=new ArrayList<>();
         String name;
-        for(int j = 0; j < ni*numAttributes; j++){
+        for(int j = 0; j < sum(numIntervals)*numAttributes; j++){
             name = "F"+j;
             atts.add(new Attribute(name));
         }
@@ -524,10 +545,9 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             //1. Select random intervals for tree i
             int[][][] interval = new int[representations.length][][];
             for (int r = 0; r < representations.length; r++) {
-                if (reduceIntervals && r == 1) interval[r] = new int[numIntervals/2][2];
-                else interval[r] = new int[numIntervals][2];
+                interval[r] = new int[numIntervals[r]][2];
 
-                for (int j = 0; j < interval[r].length; j++) {
+                for (int j = 0; j < numIntervals[r]; j++) {
                     if (rand.nextBoolean()) {
                         interval[r][j][0] = rand.nextInt(representations[r].getMaxLength() -
                                 minIntervalLength[r]); //Start point
@@ -582,8 +602,8 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             //find dimensions for each interval
             intervalDimensions.add(new int[representations.length][]);
             for (int r = 0; r < representations.length; r++) {
-                intervalDimensions.get(i)[r] = new int[interval[r].length];
-                for (int n = 0; n < interval[r].length; n++) {
+                intervalDimensions.get(i)[r] = new int[numIntervals[r]];
+                for (int n = 0; n < numIntervals[r]; n++) {
                     intervalDimensions.get(i)[r][n] = rand.nextInt(numDimensions);
                 }
                 Arrays.sort(intervalDimensions.get(i)[r]);
@@ -625,7 +645,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
                 int p = 0;
                 for (int r = 0; r < representations.length; r++) {
-                    for (int j = 0; j < interval[r].length; j++) {
+                    for (int j = 0; j < numIntervals[r]; j++) {
                         //extract the interval
                         double[] series = dimensions[r][instIdx][intervalDimensions.get(i)[r][j]];
                         double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0], interval[r][j][1] + 1);
@@ -674,7 +694,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
                     int p = 0;
                     for (int r = 0; r < representations.length; r++) {
-                        for (int j = 0; j < interval[r].length; j++) {
+                        for (int j = 0; j < numIntervals[r]; j++) {
                             double[] series = dimensions[r][n][intervalDimensions.get(i)[r][j]];
                             double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0],
                                     interval[r][j][1] + 1);
@@ -945,6 +965,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
         this.contractTime = other.contractTime;
 
         this.reduceIntervals = other.reduceIntervals;
+        this.reduceIntervals2 = other.reduceIntervals2;
     }
 
     /**
@@ -1988,15 +2009,16 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
         Instances test= DatasetLoading.loadDataNullable(dataLocation+problem+"\\"+problem+"_TEST");
         SCIF c = new SCIF();
         c.setSeed(0);
-        c.estimateOwnPerformance = true;
-        c.reduceIntervals = true;
-        c.intervalCV = true;
+        //c.estimateOwnPerformance = true;
+        c.reduceIntervals2 = true;
+        //c.intervalCV = true;
         double a;
         long t1 = System.nanoTime();
         c.buildClassifier(train);
         System.out.println("Train time="+(System.nanoTime()-t1)*1e-9);
         System.out.println("build ok: original atts = "+(train.numAttributes()-1)+" new atts = "
-                +(c.testHolder.numAttributes()-1)+" num trees = "+c.trees.size()+" num intervals = "+c.numIntervals);
+                +(c.testHolder.numAttributes()-1)+" num trees = "+c.trees.size()+" num intervals = "+
+                Arrays.toString(c.numIntervals));
         System.out.println("recorded times: train time = "+(c.trainResults.getBuildTime()*1e-9)+" estimate time = "
                 +(c.trainResults.getErrorEstimateTime()*1e-9)
                 +" both = "+(c.trainResults.getBuildPlusEstimateTime()*1e-9));

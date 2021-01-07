@@ -290,7 +290,7 @@ public class ClassifierLists {
     /**
     * INTERVAL BASED: classifiers that form multiple intervals over series and summarise
     */
-    public static String[] interval= {"LPS","TSF","CIF","STSF","SCIF","SCIFcv","SCIFtrainpred","SCIFri","SCIFri-intcv","SCIF-B","SCIF-CB","SCIF-ED","SCIF-SI","SCIF-SIN","SCIF-SIRN","SCIF-EDCI","SCIF-EDCI2","SCIF-REP1","SCIF-REP2","SCIF-REP3","SCIF-REP4","SCIF-REP5","SCIF-REP6"};
+    public static String[] interval= {"LPS","TSF","CIF","STSF","SCIF","SCIFcv","SCIFtrainpred","SCIFri","SCIFri2","SCIFri-intcv","SCIF-B","SCIF-CB","SCIF-ED","SCIF-SI","SCIF-SIN","SCIF-SIRN","SCIF-EDCI","SCIF-EDCI2","SCIF-REP1","SCIF-REP2","SCIF-REP3","SCIF-REP4","SCIF-REP5","SCIF-REP6"};
     public static HashSet<String> intervalBased=new HashSet<String>( Arrays.asList(interval));
     private static Classifier setIntervalBased(Experiments.ExperimentalArguments exp){
         String classifier=exp.classifierName;
@@ -323,6 +323,10 @@ public class ClassifierLists {
             case "SCIFri":
                 c=new SCIF();
                 ((SCIF)c).reduceIntervals = true;
+                break;
+            case "SCIFri2":
+                c=new SCIF();
+                ((SCIF)c).reduceIntervals2 = true;
                 break;
             case "SCIFri-intcv":
                 c=new SCIF();
@@ -508,7 +512,7 @@ public class ClassifierLists {
     /**
      * HYBRIDS: Classifiers that combine two or more of the above approaches
      */
-    public static String[] hybrids= {"HiveCoteAlpha","FlatCote","TS-CHIEF","HIVE-COTEv1","catch22","ROCKET","ROCKET7","ROCKET-Ecv","ROCKET-Eoob"};
+    public static String[] hybrids= {"HiveCoteAlpha","FlatCote","TS-CHIEF","HIVE-COTEv1","Catch22","ROCKET","ROCKET7","ROCKET-Ecv","ROCKET-Eoob"};
     public static HashSet<String> hybridBased=new HashSet<String>( Arrays.asList(hybrids));
     private static Classifier setHybridBased(Experiments.ExperimentalArguments exp){
         String classifier=exp.classifierName;
@@ -531,7 +535,7 @@ public class ClassifierLists {
                 c=new TSCHIEFWrapper();
                 ((TSCHIEFWrapper)c).setSeed(fold);
                 break;
-            case "catch22":
+            case "Catch22":
                 c = new Catch22Classifier();
                 break;
             case "ROCKET":

@@ -342,7 +342,7 @@ public class STSF extends EnhancedAbstractClassifier implements TechnicalInforma
                                                                     int[] classCounts){
         int seriesLength = rep.numAttributes()-1;
         int splitPoint;
-        if (seriesLength-8 <= 0) splitPoint = seriesLength/2;
+        if (seriesLength <= 8) splitPoint = seriesLength/2;
         else splitPoint = rand.nextInt(seriesLength-8)+4; //min 4, max serieslength-4
 
         ColumnNormalizer rn = new ColumnNormalizer();
