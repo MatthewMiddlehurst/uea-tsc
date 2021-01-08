@@ -15,7 +15,9 @@
  */
 package tsml.classifiers.interval_based;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 
 import evaluation.storage.ClassifierResults;
@@ -927,12 +929,31 @@ public class TSF extends EnhancedAbstractClassifier implements TechnicalInformat
         String[] atts = new String[]{"mean","stdev","slope"};
         for (int i = 0 ; i < 3; i++){
             of.writeLine(atts[i]);
+            of.writeLine("0");
             of.writeLine(Arrays.toString(curves[i]));
         }
         of.closeFile();
 
-        Runtime.getRuntime().exec("py src/main/python/visCIF.py \"" +
-                visSavePath.replace("\\", "/")+ "\" " + seed + " 3 3");
+        Process p = Runtime.getRuntime().exec("py src/main/python/visCIF.py \"" +
+                visSavePath.replace("\\", "/")+ "\" " + seed + " 3 1 3");
+
+        if (debug) {
+            System.out.println("TSF vis python output:");
+            BufferedReader out = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            BufferedReader err = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+            System.out.println("output : ");
+            String outLine = out.readLine();
+            while (outLine != null) {
+                System.out.println(outLine);
+                outLine = out.readLine();
+            }
+            System.out.println("error : ");
+            String errLine = err.readLine();
+            while (errLine != null) {
+                System.out.println(errLine);
+                errLine = err.readLine();
+            }
+        }
 
         return true;
     }
