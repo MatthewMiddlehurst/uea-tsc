@@ -24,7 +24,7 @@ dependencies {
     compile group: 'commons-io', name: 'commons-io', version: '2.6'
     // https://mvnrepository.com/artifact/com.carrotsearch/hppc
     // WEASEL WEASEL_MUSE IndividualTDE MultivariateIndividualTDE
-    compile group: 'com.carrotsearch', name: 'hppc', version: '0.8.2'
+    compile group: 'com.carrotsearch', name: 'hppc', version: '0.7.3'
     // https://mvnrepository.com/artifact/com.beust/jcommander
     compile group: 'com.beust', name: 'jcommander', version: '1.78'
     // https://mvnrepository.com/artifact/net.sourceforge.jexcelapi/jxl
