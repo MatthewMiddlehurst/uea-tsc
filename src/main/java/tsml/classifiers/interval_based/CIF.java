@@ -510,11 +510,13 @@ public class CIF extends EnhancedAbstractClassifier implements TechnicalInformat
                     interval[j][0] = rand.nextInt(seriesLength - minIntervalLength); //Start point
 
                     int range = Math.min(seriesLength - interval[j][0], maxIntervalLength);
-                    int length = rand.nextInt(range - minIntervalLength) + minIntervalLength;
+                    int length;
+                    if (range - minIntervalLength == 0) length = minIntervalLength;
+                    else length = rand.nextInt(range - minIntervalLength) + minIntervalLength;
                     interval[j][1] = interval[j][0] + length;
                 } else {
                     interval[j][1] = rand.nextInt(seriesLength - minIntervalLength)
-                            + minIntervalLength; //Start point
+                            + minIntervalLength; //End point
 
                     int range = Math.min(interval[j][1], maxIntervalLength);
                     int length;

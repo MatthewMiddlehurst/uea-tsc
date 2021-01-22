@@ -129,6 +129,7 @@ public class TEASER extends EarlyDecisionMaker implements Randomizable, Loadable
             } else {
                 count++;
                 if (count >= v) {
+                    predCounts.clear();
                     return true;
                 } else {
                     predCounts.put(pred, count);
