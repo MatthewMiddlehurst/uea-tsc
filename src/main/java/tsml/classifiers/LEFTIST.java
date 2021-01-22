@@ -3,7 +3,9 @@ package tsml.classifiers;
 import experiments.data.DatasetLoading;
 import fileIO.OutFile;
 import org.apache.commons.lang3.ArrayUtils;
+import tsml.classifiers.dictionary_based.cBOSS;
 import tsml.classifiers.interval_based.CIF;
+import tsml.classifiers.interval_based.TSF;
 import tsml.data_containers.TimeSeriesInstance;
 import tsml.data_containers.TimeSeriesInstances;
 import tsml.data_containers.utilities.Converter;
@@ -37,7 +39,7 @@ import static utilities.Utilities.argMax;
  **/
 public class LEFTIST {
 
-    private TimeSeriesInstances train;
+    private TimeSeriesInstances sampleSeries;
     private EnhancedAbstractClassifier classifier;
 
     private int noSlices = 20;
@@ -63,15 +65,15 @@ public class LEFTIST {
 
     private boolean debug = false;
 
-    public LEFTIST(TimeSeriesInstances train, EnhancedAbstractClassifier classifier, int seed){
-        this.train = train;
+    public LEFTIST(TimeSeriesInstances sampleSeries, EnhancedAbstractClassifier classifier, int seed){
+        this.sampleSeries = sampleSeries;
         this.classifier = classifier;
         this.seed = seed;
         this.rand = new Random(seed);
     }
 
-    public LEFTIST(Instances train, EnhancedAbstractClassifier classifier, int seed){
-        this.train = Converter.fromArff(train);
+    public LEFTIST(Instances sampleSeries, EnhancedAbstractClassifier classifier, int seed){
+        this.sampleSeries = Converter.fromArff(sampleSeries);
         this.classifier = classifier;
         this.seed = seed;
         this.rand = new Random(seed);
@@ -90,6 +92,13 @@ public class LEFTIST {
     public void setDistanceMeasure(Function<Pair<double[],double[]>,Double> f) { similarityMeasure = f; }
 
     public void setKernel(Function<Double,Double> f) { kernel = f; }
+
+    public void setDebug(boolean b) { debug = b; }
+
+    public void setSeed(int i) {
+        seed = i;
+        rand = new Random(seed);
+    }
 
     public Explanation generateExplanation(TimeSeriesInstance inst) throws Exception {
         if (inst.getNumDimensions() > 1){
@@ -118,8 +127,11 @@ public class LEFTIST {
             e.classes = new int[]{ e.predVal };
         }
         else{
-            noClasses = train.getClassLabels().length;
-            e.classes = train.getClassIndexes();
+            noClasses = sampleSeries.getClassLabels().length;
+            e.classes = new int[sampleSeries.numClasses()];
+            for (int i = 0; i < e.classes.length; i++){
+                e.classes[i] = i;
+            }
         }
 
         e.coefficientsForClass = new double[noClasses][];
@@ -128,10 +140,9 @@ public class LEFTIST {
         Arrays.fill(e.scores, -1);
 
         for (int i = 0 ; i < noClasses; i++) {
-            int[] usedFeatures = featureSelection(activatedSlices, neighbourWeights, probas, e.classes[i]);
+            e.usedFeatures = featureSelection(activatedSlices, neighbourWeights, probas, e.classes[i]);
 
-            Instances maskInstances = maskInstances(activatedSlices, neighbourWeights, usedFeatures);
-
+            Instances maskInstances = maskInstances(activatedSlices, neighbourWeights, e.usedFeatures);
             for (int n = 0; n < noNeighbours; n++){
                 maskInstances.get(n).setClassValue(probas[n][e.classes[i]]);
             }
@@ -145,7 +156,9 @@ public class LEFTIST {
 
             double[] c = lr.coefficients();
             e.coefficientsForClass[i] = new double[noSlices];
-            System.arraycopy(c, 0, e.coefficientsForClass[i], 0, noSlices);
+            for (int n = 0; n < noFeatures; n++){
+                e.coefficientsForClass[i][e.usedFeatures[n]] = c[n];
+            }
             e.classMeans[i] = c[c.length-1];
         }
 
@@ -170,17 +183,17 @@ public class LEFTIST {
         }
         of.writeLine("");;
         of.writeLine(Integer.toString(exp.predVal));
-        of.writeLine(Integer.toString(train.getClassLabels().length));
+        of.writeLine(Integer.toString(sampleSeries.getClassLabels().length));
         for (int i = 0; i < exp.coefficientsForClass.length; i++){
             of.writeLine(Integer.toString(exp.classes[i]));
             of.writeLine(Arrays.toString(exp.coefficientsForClass[i]));
         }
 
-        Process p = Runtime.getRuntime().exec("python src/main/python/leftist.py \"" +
+        Process p = Runtime.getRuntime().exec("py src/main/python/leftist.py \"" +
                 figureSavePath.replace("\\", "/")+ "\" " + seed);
 
         if (debug) {
-            System.out.println("CIF interp python output:");
+            System.out.println("LEFTIST interp python output:");
             BufferedReader out = new BufferedReader(new InputStreamReader(p.getInputStream()));
             BufferedReader err = new BufferedReader(new InputStreamReader(p.getErrorStream()));
             System.out.println("output : ");
@@ -235,7 +248,7 @@ public class LEFTIST {
         double[] instVals = inst.toValueArray()[0];
         double[][] transformedNeighbours = new double[noNeighbours][];
         for (int i = 0; i < noNeighbours; i++){
-            transformedNeighbours[i] = train.get(rand.nextInt(train.numInstances())).toValueArray()[0];
+            transformedNeighbours[i] = sampleSeries.get(rand.nextInt(sampleSeries.numInstances())).toValueArray()[0];
             for (int n = 0 ; n < noSlices; n++){
                 if (activatedSlices[i][n] == 1){
                     System.arraycopy(instVals, slices[n][0], transformedNeighbours[i], slices[n][0],
@@ -298,8 +311,12 @@ public class LEFTIST {
             for (int i = 0; i < noSlices; i++) {
                 allFeatures[i] = i;
             }
+
             Instances maskInstances = maskInstances(activatedSlices, neighbourWeights, Arrays.stream(allFeatures)
                     .mapToInt(i -> i).toArray());
+            for (int n = 0; n < noNeighbours; n++){
+                maskInstances.get(n).setClassValue(probas[n][cls]);
+            }
 
             LinearRegression lr = new LinearRegression();
             lr.buildClassifier(maskInstances);
@@ -390,6 +407,7 @@ public class LEFTIST {
         int predVal;
         int[][] slices;
         int[] classes;
+        int[] usedFeatures;
         double[][] coefficientsForClass;
         double[] classMeans;
         double[] scores;
@@ -399,8 +417,8 @@ public class LEFTIST {
         @Override
         public String toString(){
             return predVal + "\n" + Arrays.deepToString(slices) + "\n" + Arrays.toString(classes) + "\n" +
-                    Arrays.deepToString(coefficientsForClass) + "\n" + Arrays.toString(classMeans) + "\n" +
-                    Arrays.toString(scores);
+                    Arrays.toString(usedFeatures) + "\n" + Arrays.deepToString(coefficientsForClass) + "\n" +
+                    Arrays.toString(classMeans) + "\n" + Arrays.toString(scores);
         }
     }
 
@@ -408,22 +426,24 @@ public class LEFTIST {
         int fold = 0;
 
         //Minimum working example
-        String dataset = "EthanolLevel";
-        Instances train = DatasetLoading.loadDataNullable("Z:\\ArchiveData\\Univariate_arff\\" + dataset +
+        String dataset = "ItalyPowerDemand";
+        Instances train = DatasetLoading.loadDataNullable("D:\\CMP Machine Learning\\Datasets\\UnivariateARFF\\" + dataset +
                 "\\" + dataset + "_TRAIN.arff");
-        Instances test = DatasetLoading.loadDataNullable("Z:\\ArchiveData\\Univariate_arff\\" + dataset +
+        Instances test = DatasetLoading.loadDataNullable("D:\\CMP Machine Learning\\Datasets\\UnivariateARFF\\" + dataset +
                 "\\" + dataset + "_TEST.arff");
         Instances[] data = resampleTrainAndTestInstances(train, test, fold);
         train = data[0];
         test = data[1];
 
-        CIF c = new CIF();
+        TSF c = new TSF();
+        c.seed = 0;
         c.buildClassifier(train);
         LEFTIST l = new LEFTIST(train, c, 0);
-        l.outputFigure(test.get(0), "E:\\Temp\\LEFTIST\\" + dataset + "1\\");
-        l.outputFigure(test.get(1), "E:\\Temp\\LEFTIST\\" + dataset + "2\\");
-        l.outputFigure(test.get(2), "E:\\Temp\\LEFTIST\\" + dataset + "3\\");
-        l.outputFigure(test.get(3), "E:\\Temp\\LEFTIST\\" + dataset + "4\\");
-        l.outputFigure(test.get(4), "E:\\Temp\\LEFTIST\\" + dataset + "5\\");
+        l.debug = true;
+        l.outputFigure(test.get(0), "D:\\CMP Machine Learning\\tempResults\\LEFTIST\\" + dataset + "1\\");
+        l.outputFigure(test.get(0), "D:\\CMP Machine Learning\\tempResults\\LEFTIST\\" + dataset + "2\\");
+        l.outputFigure(test.get(0), "D:\\CMP Machine Learning\\tempResults\\LEFTIST\\" + dataset + "3\\");
+        l.outputFigure(test.get(0), "D:\\CMP Machine Learning\\tempResults\\LEFTIST\\" + dataset + "4\\");
+        l.outputFigure(test.get(0), "D:\\CMP Machine Learning\\tempResults\\LEFTIST\\" + dataset + "5\\");
     }
 }

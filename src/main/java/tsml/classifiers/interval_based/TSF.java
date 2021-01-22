@@ -362,6 +362,7 @@ public class TSF extends EnhancedAbstractClassifier implements TechnicalInformat
             loadFromFile(checkpointPath + "TSF" + seed + ".ser");
         }
         else {//else initialise variables
+            numClasses = data.numClasses();
             seriesLength = data.numAttributes() - 1;
             if (numIntervalsFinder == null){
                 numIntervals = (int)Math.sqrt(seriesLength);
@@ -621,7 +622,7 @@ public class TSF extends EnhancedAbstractClassifier implements TechnicalInformat
  */   
     @Override
     public double[] distributionForInstance(Instance ins) throws Exception {
-        double[] d=new double[ins.numClasses()];
+        double[] d=new double[numClasses];
         //Build transformed instance
         double[] series=ins.toDoubleArray();
         for(int i=0;i<trees.size();i++){
@@ -764,6 +765,7 @@ public class TSF extends EnhancedAbstractClassifier implements TechnicalInformat
 //            trainContractTimeNanos = saved.trainContractTimeNanos;
             seriesLength = saved.seriesLength;
 
+            numClasses = saved.numClasses;
             rand = saved.rand;
             seedClassifier = saved.seedClassifier;
             seed = saved.seed;
