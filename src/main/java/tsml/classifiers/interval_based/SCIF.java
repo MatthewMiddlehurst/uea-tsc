@@ -34,6 +34,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Random;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
@@ -785,7 +786,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
      *     do the transfrorms
      *     build the classifier
      *
-     * @param data TimeSeriesInstances data
+     * @param representations TimeSeriesInstances data
      * @param result Instances object formatted for transformed data
      * @throws Exception unable to build SCIF
      */
@@ -1687,226 +1688,211 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
          **/
         @Override
         public MultiThreadBuildHolder call() throws Exception{
-//            MultiThreadBuildHolder h = new MultiThreadBuildHolder();
-//            Random rand = new Random(seed + i * numClassifiers);
-//
-//            //1. Select random intervals for tree i
-//
-//            int[][] interval = new int[numIntervals][2];  //Start and end
-//
-//            for (int j = 0; j < numIntervals; j++) {
-//                if (rand.nextBoolean()) {
-//                    interval[j][0] = rand.nextInt(seriesLength - minIntervalLength); //Start point
-//
-//                    int range = Math.min(seriesLength - interval[j][0], maxIntervalLength);
-//                    int length = rand.nextInt(range - minIntervalLength) + minIntervalLength;
-//                    interval[j][1] = interval[j][0] + length;
-//                } else {
-//                    interval[j][1] = rand.nextInt(seriesLength - minIntervalLength)
-//                            + minIntervalLength; //Start point
-//
-//                    int range = Math.min(interval[j][1], maxIntervalLength);
-//                    int length;
-//                    if (range - minIntervalLength == 0) length = 3;
-//                    else length = rand.nextInt(range - minIntervalLength) + minIntervalLength;
-//                    interval[j][0] = interval[j][1] - length;
-//                }
-//            }
-//
-//            //If bagging find instances with replacement
-//
-//            int[] instInclusions = null;
-//            boolean[] inBag = null;
-//            if (bagging) {
-//                inBag = new boolean[numInstances];
-//                instInclusions = new int[numInstances];
-//
-//                for (int n = 0; n < numInstances; n++) {
-//                    instInclusions[rand.nextInt(numInstances)]++;
-//                }
-//
-//                for (int n = 0; n < numInstances; n++) {
-//                    if (instInclusions[n] > 0) {
-//                        inBag[n] = true;
-//                    }
-//                }
-//            }
-//
-//            //find attributes to subsample
-//            ArrayList<Integer> subsampleAtts = new ArrayList<>();
-//            for (int n = 0; n < startNumAttributes; n++){
-//                subsampleAtts.add(n);
-//            }
-//
-//            while (subsampleAtts.size() > numAttributes){
-//                subsampleAtts.remove(rand.nextInt(subsampleAtts.size()));
-//            }
-//
-//            //find dimensions for each interval
-//            ArrayList<Integer> intervalDimensions = new ArrayList<>();
-//            for (int n = 0; n < numIntervals; n++) {
-//                intervalDimensions.add(rand.nextInt(numDimensions));
-//            }
-//            Collections.sort(intervalDimensions);
-//
-//            h.subsampleAtts = subsampleAtts;
-//            h.intervalDimensions = intervalDimensions;
-//
-//            //For bagging
-//            int instIdx = 0;
-//            int lastIdx = -1;
-//
-//            //2. Generate and store attributes
-//            for (int k = 0; k < numInstances; k++) {
-//                //For each instance
-//
-//                if (bagging) {
-//                    boolean sameInst = false;
-//
-//                    while (true) {
-//                        if (instInclusions[instIdx] == 0) {
-//                            instIdx++;
-//                        } else {
-//                            instInclusions[instIdx]--;
-//
-//                            if (instIdx == lastIdx) {
-//                                result.set(k, new DenseInstance(result.instance(k - 1)));
-//                                sameInst = true;
-//                            } else {
-//                                lastIdx = instIdx;
-//                            }
-//
-//                            break;
-//                        }
-//                    }
-//
-//                    if (sameInst) continue;
-//
-//                    result.instance(k).setValue(result.classIndex(), classVals[instIdx]);
-//                } else {
-//                    instIdx = k;
-//                }
-//
-//                for (int j = 0; j < numIntervals; j++) {
-//                    //extract the interval
-//                    double[] series = dimensions[instIdx][intervalDimensions.get(j)];
-//
-//                    FeatureSet f = new FeatureSet();
-//                    double[] intervalArray = Arrays.copyOfRange(series, interval[j][0], interval[j][1] + 1);
-//
-//                    //process features
-//                    Catch22 c22 = new Catch22();
-//
-//                    for (int g = 0; g < numAttributes; g++) {
-//                        if (subsampleAtts.get(g) < 22) {
-//                            result.instance(k).setValue(j * numAttributes + g,
-//                                    c22.getSummaryStatByIndex(subsampleAtts.get(g), j, intervalArray));
-//                        } else {
-//                            if (!f.calculatedFeatures) {
-//                                f.setFeatures(series, interval[j][0], interval[j][1]);
-//                            }
-//
-//                            switch (subsampleAtts.get(g)) {
-//                                case 22:
-//                                    result.instance(k).setValue(j * numAttributes + g, f.mean);
-//                                    break;
-//                                case 23:
-//                                    result.instance(k).setValue(j * numAttributes + g, f.stDev);
-//                                    break;
-//                                case 24:
-//                                    result.instance(k).setValue(j * numAttributes + g, f.slope);
-//                                    break;
-//                                default:
-//                                    throw new Exception("att subsample basic features broke");
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//
-//            if (bagging) {
-//                result.randomize(rand);
-//            }
-//
-//            //3. Create and build tree using all the features. Feature selection
-//            Classifier tree = AbstractClassifier.makeCopy(base);
-//            if (seedClassifier && tree instanceof Randomizable)
-//                ((Randomizable) tree).setSeed(seed * (i + 1));
-//
-//            tree.buildClassifier(result);
-//
-//            boolean[] attUsage;
-//            if (base instanceof TimeSeriesTree) {
-//                attUsage = ((TimeSeriesTree)tree).getAttributesUsed();
-//            }
-//            else{
-//                attUsage = new boolean[numAttributes*numIntervals];
-//                Arrays.fill(attUsage,true);
-//            }
-//
-//            h.attUsage = attUsage;
-//
-//            if (bagging && getEstimateOwnPerformance()) {
-//                long t1 = System.nanoTime();
-//                int[] oobCounts = new int[numInstances];
-//                double[][] trainDistributions = new double[numInstances][numClasses];
-//
-//                for (int n = 0; n < numInstances; n++) {
-//                    if (inBag[n])
-//                        continue;
-//
-//                    for (int j = 0; j < numIntervals; j++) {
-//                        double[] series = dimensions[n][intervalDimensions.get(j)];
-//
-//                        FeatureSet f = new FeatureSet();
-//                        double[] intervalArray = Arrays.copyOfRange(series, interval[j][0], interval[j][1] + 1);
-//
-//                        for (int g = 0; g < numAttributes; g++) {
-//                            if (!attUsage[j * numAttributes + g]) {
-//                                testHolder.instance(0).setValue(j * numAttributes + g, 0);
-//                                continue;
-//                            }
-//
-//                            if (subsampleAtts.get(g) < 22) {
-//                                testHolder.instance(0).setValue(j * numAttributes + g,
-//                                        c22.getSummaryStatByIndex(subsampleAtts.get(g), j, intervalArray));
-//                            } else {
-//                                if (!f.calculatedFeatures) {
-//                                    f.setFeatures(series, interval[j][0], interval[j][1]);
-//                                }
-//                                switch (subsampleAtts.get(g)) {
-//                                    case 22:
-//                                        testHolder.instance(0).setValue(j * numAttributes + g, f.mean);
-//                                        break;
-//                                    case 23:
-//                                        testHolder.instance(0).setValue(j * numAttributes + g, f.stDev);
-//                                        break;
-//                                    case 24:
-//                                        testHolder.instance(0).setValue(j * numAttributes + g, f.slope);
-//                                        break;
-//                                    default:
-//                                        throw new Exception("att subsample basic features broke");
-//                                }
-//                            }
-//                        }
-//                    }
-//
-//                    double[] newProbs = tree.distributionForInstance(testHolder.instance(0));
-//                    oobCounts[n]++;
-//                    for (int k = 0; k < newProbs.length; k++)
-//                        trainDistributions[n][k] += newProbs[k];
-//                }
-//
-//                h.oobCounts = oobCounts;
-//                h.trainDistribution = trainDistributions;
-//                h.errorTime = System.nanoTime() - t1;
-//            }
-//
-//            h.tree = tree;
-//            h.interval = interval;
-//
-//            return h;
-            return null;
+            MultiThreadBuildHolder h = new MultiThreadBuildHolder();
+            Random rand = new Random(seed + i * numClassifiers);
+
+            Catch22 c22 = new Catch22();
+            c22.setOutlierNormalise(outlierNorm);
+
+            //1. Select random intervals for tree i
+            int[][][] interval = new int[dimensions.length][][];
+            for (int r = 0; r < dimensions.length; r++) {
+                interval[r] = new int[numIntervals[r]][2];
+
+                for (int j = 0; j < numIntervals[r]; j++) {
+                    if (rand.nextBoolean()) {
+                        interval[r][j][0] = rand.nextInt(dimensions[r][0][0].length -
+                                minIntervalLength[r]); //Start point
+
+                        int range = Math.min(dimensions[r][0][0].length - interval[r][j][0],
+                                maxIntervalLength[r]);
+                        int length;
+                        if (range - minIntervalLength[r] == 0) length = minIntervalLength[r];
+                        else length = rand.nextInt(range - minIntervalLength[r]) + minIntervalLength[r];
+                        interval[r][j][1] = interval[r][j][0] + length;
+                    } else {
+                        interval[r][j][1] = rand.nextInt(dimensions[r][0][0].length -
+                                minIntervalLength[r]) + minIntervalLength[r]; //Start point
+
+                        int range = Math.min(interval[r][j][1], maxIntervalLength[r]);
+                        int length;
+                        if (range - minIntervalLength[r] == 0) length = minIntervalLength[r];
+                        else length = rand.nextInt(range - minIntervalLength[r]) + minIntervalLength[r];
+                        interval[r][j][0] = interval[r][j][1] - length;
+                    }
+                }
+            }
+
+            //If bagging find instances with replacement
+            int[] instInclusions = null;
+            boolean[] inBag = null;
+            if (bagging) {
+                inBag = new boolean[numInstances];
+                instInclusions = new int[numInstances];
+
+                for (int n = 0; n < numInstances; n++) {
+                    instInclusions[rand.nextInt(numInstances)]++;
+                }
+
+                for (int n = 0; n < numInstances; n++) {
+                    if (instInclusions[n] > 0) {
+                        inBag[n] = true;
+                    }
+                }
+            }
+
+            //find attributes to subsample
+            ArrayList<Integer> subsampleAtts = new ArrayList<>();
+            for (int n = 0; n < startNumAttributes; n++){
+                subsampleAtts.add(n);
+            }
+
+            while (subsampleAtts.size() > numAttributes){
+                subsampleAtts.remove(rand.nextInt(subsampleAtts.size()));
+            }
+
+            //find dimensions for each interval
+            int[][] intervalDimensions = new int[dimensions.length][];
+            for (int r = 0; r < dimensions.length; r++) {
+                intervalDimensions[r]= new int[numIntervals[r]];
+                for (int n = 0; n < numIntervals[r]; n++) {
+                    intervalDimensions[r][n] = rand.nextInt(numDimensions);
+                }
+                Arrays.sort(intervalDimensions[r]);
+            }
+
+            h.subsampleAtts = subsampleAtts;
+            h.intervalDimensions = intervalDimensions;
+
+            //For bagging
+            int instIdx = 0;
+            int lastIdx = -1;
+
+            //2. Generate and store attributes
+            for (int k = 0; k < numInstances; k++) {
+                //For each instance
+                if (bagging) {
+                    boolean sameInst = false;
+
+                    while (true) {
+                        if (instInclusions[instIdx] == 0) {
+                            instIdx++;
+                        } else {
+                            instInclusions[instIdx]--;
+
+                            if (instIdx == lastIdx) {
+                                result.set(k, new DenseInstance(result.instance(k - 1)));
+                                sameInst = true;
+                            } else {
+                                lastIdx = instIdx;
+                            }
+
+                            break;
+                        }
+                    }
+
+                    if (sameInst) continue;
+
+                    result.instance(k).setValue(result.classIndex(), classVals[instIdx]);
+                } else {
+                    instIdx = k;
+                }
+
+                int p = 0;
+                for (int r = 0; r < dimensions.length; r++) {
+                    for (int j = 0; j < numIntervals[r]; j++) {
+                        //extract the interval
+                        double[] series = dimensions[r][instIdx][intervalDimensions[r][j]];
+                        double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0], interval[r][j][1] + 1);
+
+                        //process features
+                        for (int a = 0; a < numAttributes; a++) {
+                            if (subsampleAtts.get(a) < 22) {
+                                result.instance(k).setValue(p,
+                                        c22.getSummaryStatByIndex(subsampleAtts.get(a), j, intervalArray));
+                            }
+                            else {
+                                result.instance(k).setValue(p,
+                                        FeatureSet.calcFeatureByIndex(subsampleAtts.get(a), interval[r][j][0],
+                                                interval[r][j][1], series));
+                            }
+
+                            p++;
+                        }
+                    }
+                }
+            }
+
+            //3. Create and build tree using all the features. Feature selection
+            Classifier tree = AbstractClassifier.makeCopy(base);
+            if (seedClassifier && tree instanceof Randomizable)
+                ((Randomizable) tree).setSeed(seed * (i + 1));
+
+            tree.buildClassifier(result);
+
+            boolean[] attUsage;
+            if (base instanceof TimeSeriesTree) {
+                attUsage = ((TimeSeriesTree)tree).getAttributesUsed();
+            }
+            else{
+                attUsage = new boolean[result.numAttributes() - 1];
+                Arrays.fill(attUsage,true);
+            }
+
+            h.attUsage = attUsage;
+
+            if (bagging && getEstimateOwnPerformance()) {
+                long t1 = System.nanoTime();
+                int[] oobCounts = new int[numInstances];
+                double[][] trainDistributions = new double[numInstances][numClasses];
+
+                for (int n = 0; n < numInstances; n++) {
+                    if (inBag[n])
+                        continue;
+
+                    int p = 0;
+                    for (int r = 0; r < dimensions.length; r++) {
+                        for (int j = 0; j < numIntervals[r]; j++) {
+                            double[] series = dimensions[r][n][intervalDimensions[r][j]];
+                            double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0],
+                                    interval[r][j][1] + 1);
+
+                            for (int a = 0; a < numAttributes; a++) {
+                                if (!attUsage[p]) {
+                                    result.instance(0).setValue(p, 0);
+                                    p++;
+                                    continue;
+                                }
+
+                                if (subsampleAtts.get(a) < 22){
+                                    result.instance(0).setValue(p,
+                                            c22.getSummaryStatByIndex(subsampleAtts.get(a), j, intervalArray));
+                                }
+                                else {
+                                    result.instance(0).setValue(p,
+                                            FeatureSet.calcFeatureByIndex(subsampleAtts.get(a),
+                                                    interval[r][j][0], interval[r][j][1], series));
+                                }
+
+                                p++;
+                            }
+                        }
+                    }
+
+                    double[] newProbs = tree.distributionForInstance(testHolder.instance(0));
+                    oobCounts[n]++;
+                    for (int k = 0; k < newProbs.length; k++)
+                        trainDistributions[n][k] += newProbs[k];
+                }
+
+                h.oobCounts = oobCounts;
+                h.trainDistribution = trainDistributions;
+                h.errorTime = System.nanoTime() - t1;
+            }
+
+            h.tree = tree;
+            h.interval = interval;
+            return h;
         }
     }
 
@@ -1939,60 +1925,49 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
         @Override
         public MultiThreadPredictionHolder call() throws Exception{
-//            MultiThreadPredictionHolder h = new MultiThreadPredictionHolder();
-//
-//            //Build transformed instance
-//            Catch22 c22 = new Catch22();
-//            c22.setOutlierNormalise(outlierNorm);
-//            boolean[] usedAtts = attUsage.get(i);
-//
-//            for (int j = 0; j < numIntervals; j++) {
-//                double[] series = dimensions[intervalDimensions.get(i).get(j)];
-//
-//                FeatureSet f = new FeatureSet();
-//                double[] intervalArray = Arrays.copyOfRange(series, intervals.get(i)[j][0],
-//                        intervals.get(i)[j][1] + 1);
-//
-//                for (int g = 0; g < numAttributes; g++) {
-//                    if (!usedAtts[j * numAttributes + g]) {
-//                        testHolder.instance(0).setValue(j * numAttributes + g, 0);
-//                        continue;
-//                    }
-//
-//                    if (subsampleAtts.get(i).get(g) < 22) {
-//                        testHolder.instance(0).setValue(j * numAttributes + g,
-//                                c22.getSummaryStatByIndex(subsampleAtts.get(i).get(g), j, intervalArray));
-//                    } else {
-//                        if (!f.calculatedFeatures) {
-//                            f.setFeatures(series, intervals.get(i)[j][0], intervals.get(i)[j][1]);
-//                        }
-//                        switch (subsampleAtts.get(i).get(g)) {
-//                            case 22:
-//                                testHolder.instance(0).setValue(j * numAttributes + g, f.mean);
-//                                break;
-//                            case 23:
-//                                testHolder.instance(0).setValue(j * numAttributes + g, f.stDev);
-//                                break;
-//                            case 24:
-//                                testHolder.instance(0).setValue(j * numAttributes + g, f.slope);
-//                                break;
-//                            default:
-//                                throw new Exception("att subsample basic features broke");
-//                        }
-//                    }
-//                }
-//            }
-//
-//            if (interpSavePath != null && base instanceof TimeSeriesTree) {
-//                ArrayList<double[]> al = new ArrayList<>();
-//                h.c = (int) ((TimeSeriesTree) tree).classifyInstance(testHolder.instance(0), al);
-//                h.al = al;
-//            } else {
-//                h.c = (int) tree.classifyInstance(testHolder.instance(0));
-//            }
-//
-//            return h;
-            return null;
+            MultiThreadPredictionHolder h = new MultiThreadPredictionHolder();
+
+            Catch22 c22 = new Catch22();
+            c22.setOutlierNormalise(outlierNorm);
+            boolean[] usedAtts = attUsage.get(i);
+
+            int p = 0;
+            for (int r = 0; r < dimensions.length; r++) {
+                for (int j = 0; j < intervals.get(i)[r].length; j++) {
+                    double[] series = dimensions[r][intervalDimensions.get(i)[r][j]];
+                    double[] intervalArray = Arrays.copyOfRange(series, intervals.get(i)[r][j][0],
+                            intervals.get(i)[r][j][1] + 1);
+
+                    for (int a = 0; a < numAttributes; a++) {
+                        if (!usedAtts[p]) {
+                            testHolder.instance(0).setValue(p, 0);
+                            p++;
+                            continue;
+                        }
+
+                        if (subsampleAtts.get(i).get(a) < 22){
+                            testHolder.instance(0).setValue(p,
+                                    c22.getSummaryStatByIndex(subsampleAtts.get(i).get(a), j, intervalArray));
+                        }
+                        else {
+                            testHolder.instance(0).setValue(p,
+                                    FeatureSet.calcFeatureByIndex(subsampleAtts.get(i).get(a),
+                                            intervals.get(i)[r][j][0], intervals.get(i)[r][j][1], series));
+                        }
+
+                        p++;
+                    }
+                }
+            }
+
+            if (interpSavePath != null && base instanceof TimeSeriesTree) {
+                ArrayList<double[]> al = new ArrayList<>();
+                h.c = (int) ((TimeSeriesTree) tree).classifyInstance(testHolder.instance(0), al);
+                h.al = al;
+            } else {
+                h.c = (int) tree.classifyInstance(testHolder.instance(0));
+            }
+            return h;
         }
     }
 

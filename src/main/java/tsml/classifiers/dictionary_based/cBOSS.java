@@ -447,7 +447,7 @@ public class cBOSS extends EnhancedAbstractClassifier implements TrainTimeContra
     @Override
     public void buildClassifier(final Instances data) throws Exception {
         // can classifier handle the data?
-        // getCapabilities().testWithFail(data);
+        getCapabilities().testWithFail(data);
         trainResults.setBuildTime(System.nanoTime());
         long startTime=System.nanoTime();
 

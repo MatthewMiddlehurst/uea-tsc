@@ -44,11 +44,11 @@ dependencies {
     // https://mvnrepository.com/artifact/de.bwaldvogel/liblinear
     // WEASEL WEASEL_MUSE
     compile group: 'de.bwaldvogel', name: 'liblinear', version: '2.41'
-    // https://mvnrepository.com/artifact/com.github.rwl/jtransforms
-    compile group: 'com.github.rwl', name: 'jtransforms', version: '2.4.0'
     // https://mvnrepository.com/artifact/tw.edu.ntu.csie/libsvm
     // TEASER
     compile group: 'tw.edu.ntu.csie', name: 'libsvm', version: '3.24'
+    // https://mvnrepository.com/artifact/com.github.rwl/jtransforms
+    compile group: 'com.github.rwl', name: 'jtransforms', version: '2.4.0'
     // https://mvnrepository.com/artifact/org.nd4j/nd4j-native-platform
     // RidgeClassifierCV
     compile group: 'org.nd4j', name: 'nd4j-native-platform', version: '1.0.0-beta4'

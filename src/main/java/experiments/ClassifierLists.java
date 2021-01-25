@@ -292,7 +292,7 @@ public class ClassifierLists {
     /**
     * INTERVAL BASED: classifiers that form multiple intervals over series and summarise
     */
-    public static String[] interval= {"LPS","TSF","CIF","STSF","SCIF","SCIFcv","SCIFtrainpred","SCIFri","SCIFri2","SCIFri-intcv","SCIF-B","SCIF-CB","SCIF-ED","SCIF-SI","SCIF-SIN","SCIF-SIRN","SCIF-EDCI","SCIF-EDCI2","SCIF-REP1","SCIF-REP2","SCIF-REP3","SCIF-REP4","SCIF-REP5","SCIF-REP6"};
+    public static String[] interval= {"LPS","TSF","RISE","CIF","STSF","SCIF","SCIFcv","SCIFtrainpred","SCIFri","SCIFri2","SCIFri-intcv","SCIF-B","SCIF-CB","SCIF-ED","SCIF-SI","SCIF-SIN","SCIF-SIRN","SCIF-EDCI","SCIF-EDCI2","SCIF-REP1","SCIF-REP2","SCIF-REP3","SCIF-REP4","SCIF-REP5","SCIF-REP6"};
     public static HashSet<String> intervalBased=new HashSet<String>( Arrays.asList(interval));
     private static Classifier setIntervalBased(Experiments.ExperimentalArguments exp){
         String classifier=exp.classifierName;
@@ -304,6 +304,9 @@ public class ClassifierLists {
                 break;
             case "TSF":
                 c=new TSF();
+                break;
+            case "RISE":
+                c=new RISE();
                 break;
             case "CIF":
                 c=new CIF();
@@ -446,29 +449,6 @@ public class ClassifierLists {
                 System.out.println("Unknown interval based classifier "+classifier+" should not be able to get here ");
                 System.out.println("There is a mismatch between array interval and the switch statement ");
                 throw new UnsupportedOperationException("Unknown interval based  classifier "+classifier+" should not be able to get here."
-                        + "There is a mismatch between array interval and the switch statement ");
-
-        }
-        return c;
-    }
-
-    /**
-     * FREQUENCY BASED: Classifiers that work in the spectral/frequency domain
-     */
-    public static String[] frequency= {"RISE"};
-    public static HashSet<String> frequencyBased=new HashSet<String>( Arrays.asList(frequency));
-    private static Classifier setFrequencyBased(Experiments.ExperimentalArguments exp){
-        String classifier=exp.classifierName;
-        Classifier c;
-        int fold=exp.foldId;
-        switch(classifier) {
-            case "RISE":
-                c=new RISE();
-                break;
-            default:
-                System.out.println("Unknown interval based classifier, should not be able to get here ");
-                System.out.println("There is a mismatch between array interval and the switch statement ");
-                throw new UnsupportedOperationException("Unknown interval based  classifier, should not be able to get here "
                         + "There is a mismatch between array interval and the switch statement ");
 
         }
@@ -1305,8 +1285,6 @@ public class ClassifierLists {
             c=setDictionaryBased(exp);
         else if(intervalBased.contains(classifier))
             c=setIntervalBased(exp);
-        else if(frequencyBased.contains(classifier))
-            c=setFrequencyBased(exp);
         else if(shapeletBased.contains(classifier))
             c=setShapeletBased(exp);
         else if(hybridBased.contains(classifier))

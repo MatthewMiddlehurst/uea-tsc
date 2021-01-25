@@ -3,8 +3,6 @@ package tsml.classifiers;
 import experiments.data.DatasetLoading;
 import fileIO.OutFile;
 import org.apache.commons.lang3.ArrayUtils;
-import tsml.classifiers.dictionary_based.cBOSS;
-import tsml.classifiers.interval_based.CIF;
 import tsml.classifiers.interval_based.TSF;
 import tsml.data_containers.TimeSeriesInstance;
 import tsml.data_containers.TimeSeriesInstances;
