@@ -20,6 +20,7 @@ package tsml.transformers.shapelet_tools.distance_functions;
 import java.io.Serializable;
 
 import tsml.data_containers.TimeSeriesInstance;
+import tsml.data_containers.TimeSeriesInstances;
 import tsml.transformers.shapelet_tools.ShapeletCandidate;
 import static utilities.multivariate_tools.MultivariateInstanceTools.convertMultiInstanceToArrays;
 import static utilities.multivariate_tools.MultivariateInstanceTools.splitMultivariateInstance;
@@ -41,6 +42,13 @@ public class MultivariateDistance extends ShapeletDistance implements Serializab
         numChannels = utilities.multivariate_tools.MultivariateInstanceTools.numDimensions(data);
         seriesLength = utilities.multivariate_tools.MultivariateInstanceTools.channelLength(data);
         
+    }
+
+    public void init(TimeSeriesInstances data)
+    {
+        count =0;
+        numChannels = data.getMaxNumDimensions();
+        seriesLength = data.getMaxLength();
     }
     
     protected double[][] candidateArray2;
