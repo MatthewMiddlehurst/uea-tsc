@@ -95,7 +95,7 @@ public class ClassifierLists {
      * DISTANCE BASED: classifiers based on measuring the distance between two classifiers
      */
     public static String[] distance= {
-        "ED","DTW","DTWCV", "EE","LEE","ApproxElasticEnsemble","ProximityForest","PF","FastElasticEnsemble",
+        "ED","DTW","DTWCV", "EE","LEE","ApproxElasticEnsemble","ProximityForest","PF","PF50","FastElasticEnsemble",
             "DD_DTW","DTD_C","CID_DTW","NN_CID",
         "PF_R1",
         "PF_R5",
@@ -169,6 +169,10 @@ public class ClassifierLists {
                 break;
             case "ProximityForest": case "PF":
                 c = new ProximityForestWrapper();
+                break;
+            case "PF50":
+                c = ProximityForest.Config.PF_R5_OOB_R.configure(new ProximityForest());
+                ((ProximityForest)c).setNumTreeLimit(50);
                 break;
             case "FastElasticEnsemble":
                 c=new FastElasticEnsemble();
@@ -292,7 +296,7 @@ public class ClassifierLists {
     /**
     * INTERVAL BASED: classifiers that form multiple intervals over series and summarise
     */
-    public static String[] interval= {"LPS","TSF","RISE","CIF","STSF","SCIF","SCIFcv","SCIFtrainpred","SCIFri","SCIFri2","SCIFri-intcv","SCIF-B","SCIF-CB","SCIF-ED","SCIF-SI","SCIF-SIN","SCIF-SIRN","SCIF-EDCI","SCIF-EDCI2","SCIF-REP1","SCIF-REP2","SCIF-REP3","SCIF-REP4","SCIF-REP5","SCIF-REP6"};
+    public static String[] interval= {"LPS","TSF","RISE","CIF","STSF","SCIF","DrCIF-cv","SCIFtrainpred","SCIFri","SCIFri2","SCIFri-intcv","SCIF-B","SCIF-CB","SCIF-ED","SCIF-SI","SCIF-SIN","SCIF-SIRN","SCIF-EDCI","SCIF-EDCI2","SCIF-REP1","SCIF-REP2","SCIF-REP3","SCIF-REP4","SCIF-REP5","SCIF-REP6"};
     public static HashSet<String> intervalBased=new HashSet<String>( Arrays.asList(interval));
     private static Classifier setIntervalBased(Experiments.ExperimentalArguments exp){
         String classifier=exp.classifierName;
@@ -333,7 +337,7 @@ public class ClassifierLists {
                 c=new SCIF();
                 ((SCIF)c).reduceIntervals2 = true;
                 break;
-            case "SCIFri-intcv":
+            case "DrCIF-cv":
                 c=new SCIF();
                 ((SCIF)c).reduceIntervals = true;
                 ((SCIF)c).intervalCV = true;
@@ -552,7 +556,7 @@ public class ClassifierLists {
     /**
      * MULTIVARIATE time series classifiers, all in one list for now
      */
-    public static String[] allMultivariate={"STC_D","Shapelet_I","Shapelet_D","Shapelet_Indep","ED_I","ED_D","DTW_I","DTW_D",
+    public static String[] allMultivariate={"STC_D","STC_D2","Shapelet_I","Shapelet_D","Shapelet_Indep","ED_I","ED_D","DTW_I","DTW_D",
             "DTW_A","HIVE-COTE_I", "HC_I", "CBOSS_I", "RISE_I", "STC_I", "TSF_I","PF_I","TS-CHIEF_I","HC-PF_I",
             "HIVE-COTEn_I","WEASEL-MUSE"};//Not enough to classify yet
     public static HashSet<String> multivariateBased=new HashSet<String>( Arrays.asList(allMultivariate));
@@ -569,6 +573,10 @@ public class ClassifierLists {
         }
         switch(classifier) {
             case "STC_D":
+                c=new STC_D();
+                ((STC_D)c).setSeed(fold);
+                break;
+            case "STC_D2":
                 c=new STC_D();
                 ((STC_D)c).setSeed(fold);
                 break;
@@ -779,7 +787,7 @@ public class ClassifierLists {
     /**
      * BESPOKE classifiers for particular set ups. Use if you want some special configuration/pipeline
      * not encapsulated within a single classifier      */
-    public static String[] bespoke= {"HIVE-COTE 1.0","HIVE-COTE 2.0","HC2-CIF","HC2-TDE","HC2-ROCKET","HC2-STC","HC2-PF","HC2-MV","HIVE-COTE","HC-TDE","HC-CIF","HC1.5","HC-WEASEL","HC-BcSBOSS","HC-cSBOSS","TunedHIVE-COTE","HC-S-BOSS"};
+    public static String[] bespoke= {"HIVE-COTE 1.0","HIVE-COTE 2.0","HC2-CIF","HC2-TDE","HC2-ROCKET","HC2-STC","HC2-PF","HC2-MV","HC2-MV2","HIVE-COTE","HC-TDE","HC-CIF","HC1.5","HC-WEASEL","HC-BcSBOSS","HC-cSBOSS","TunedHIVE-COTE","HC-S-BOSS"};
     public static HashSet<String> bespokeClassifiers=new HashSet<String>( Arrays.asList(bespoke));
     private static Classifier setBespokeClassifiers(Experiments.ExperimentalArguments exp){
         String classifier=exp.classifierName,resultsPath="",dataset="";
@@ -893,7 +901,21 @@ public class ClassifierLists {
                 break;
             case "HC2-MV":
                 if(canLoadFromFile){
-                    String[] cls={"SCIFri2","TDE","ROCKET-E","STC_I","DTW_D"};//RotF for ST
+                    String[] cls={"DrCIF","TDE","ARSENAL","STC_I","DTW_D"};//RotF for ST
+                    c=new HIVE_COTE();
+                    ((HIVE_COTE)c).setFillMissingDistsWithOneHotVectors(true);
+                    ((HIVE_COTE)c).setSeed(fold);
+                    ((HIVE_COTE)c).setBuildIndividualsFromResultsFiles(true);
+                    ((HIVE_COTE)c).setResultsFileLocationParameters(resultsPath, dataset, fold);
+                    ((HIVE_COTE)c).setClassifiersNamesForFileRead(cls);
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file for CAWPE and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+                break;
+            case "HC2-MV2":
+                if(canLoadFromFile){
+                    String[] cls={"DrCIF","TDE","ARSENAL","STC_I"};//RotF for ST
                     c=new HIVE_COTE();
                     ((HIVE_COTE)c).setFillMissingDistsWithOneHotVectors(true);
                     ((HIVE_COTE)c).setSeed(fold);

@@ -79,20 +79,26 @@ public class STC_D extends EnhancedAbstractClassifier {
         Instances shapeletData = createTransformData(data);
         transformBuildTime = System.nanoTime()-startTime;
 
+        System.out.println(transformBuildTime);
+
         redundantFeatures=InstanceTools.removeRedundantTrainAttributes(shapeletData);
 
         if(getEstimateOwnPerformance()){
+            long t1 = System.nanoTime();
             int numFolds = setNumberOfFolds(data);
             CrossValidationEvaluator cv = new CrossValidationEvaluator();
             cv.setSeed(seed * 12);
             cv.setNumFolds(numFolds);
             trainResults = cv.crossValidateWithStats(classifier, shapeletData);
+            System.out.println(System.nanoTime()-t1);
         }
 
         if (seedClassifier)
             classifier.setSeed(seed);
 
+        long t1 = System.nanoTime();
         classifier.buildClassifier(shapeletData);
+        System.out.println(System.nanoTime()-t1);
 
         trainResults.setTimeUnit(TimeUnit.NANOSECONDS);
         if(getEstimateOwnPerformance()){
@@ -156,15 +162,15 @@ public class STC_D extends EnhancedAbstractClassifier {
         transformOptions.setMinLength(3);
         transformOptions.setMaxLength(m);
 
-        if(train.numClasses() > 2) {
-            transformOptions.setBinaryClassValue(true);
-            transformOptions.setClassBalancing(true);
-        }else{
+//        if(train.numClasses() > 2) {
+//            transformOptions.setBinaryClassValue(true);
+//            transformOptions.setClassBalancing(true);
+//        }else{
             transformOptions.setBinaryClassValue(false);
             transformOptions.setClassBalancing(false);
-        }
+//        }
 
-        int numShapeletsInTransform = Math.min(10 * train.numInstances(), 2000);
+        int numShapeletsInTransform = Math.min(10 * train.numInstances(), 1000);
 
         long transformContractTime = TimeUnit.NANOSECONDS.convert(4, TimeUnit.HOURS);
 
@@ -228,10 +234,10 @@ public class STC_D extends EnhancedAbstractClassifier {
         int fold = 0;
 
         String dataset = "ERing";
-        Instances train = DatasetLoading.loadDataNullable("D:\\CMP Machine Learning\\Datasets\\" +
-                "MultivariateARFF\\" + dataset + "\\" + dataset + "_TRAIN.arff");
-        Instances test = DatasetLoading.loadDataNullable("D:\\CMP Machine Learning\\Datasets\\" +
-                "MultivariateARFF\\" + dataset + "\\" + dataset + "_TEST.arff");
+        Instances train = DatasetLoading.loadDataNullable("Z:\\ArchiveData\\Multivariate_arff\\" + dataset
+                + "\\" + dataset + "_TRAIN.arff");
+        Instances test = DatasetLoading.loadDataNullable("Z:\\ArchiveData\\Multivariate_arff\\" + dataset
+                + "\\" + dataset + "_TEST.arff");
         Instances[] data = resampleTrainAndTestInstances(train, test, fold);
         train = data[0];
         test = data[1];
