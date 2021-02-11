@@ -624,8 +624,10 @@ public class ShapeletTransform implements Serializable, TechnicalInformationHand
                     casesSoFar = 0;
                     passes++;
                 }
-                if (usedTime > contractTime)
+                if (usedTime > contractTime) {
+                    System.out.println(usedTime);
                     keepGoing = false;
+                }
             }
         }
 
@@ -738,8 +740,10 @@ public class ShapeletTransform implements Serializable, TechnicalInformationHand
                     casesSoFar = 0;
                     passes++;
                 }
-                if (usedTime > contractTime)
+                if (usedTime > contractTime) {
+                    System.out.println(usedTime);
                     keepGoing = false;
+                }
             }
         }
 
@@ -846,8 +850,10 @@ public class ShapeletTransform implements Serializable, TechnicalInformationHand
                 passes++;
             }
             if (contracted) {
-                if (usedTime > contractTime)
+                if (usedTime > contractTime) {
+                    System.out.println(usedTime);
                     keepGoing = false;
+                }
             }
 
         }
@@ -934,8 +940,10 @@ public class ShapeletTransform implements Serializable, TechnicalInformationHand
                 passes++;
             }
             if (contracted) {
-                if (usedTime > contractTime)
+                if (usedTime > contractTime) {
+                    System.out.println(usedTime);
                     keepGoing = false;
+                }
             }
 
         }
