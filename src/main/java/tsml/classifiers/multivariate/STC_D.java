@@ -170,7 +170,7 @@ public class STC_D extends EnhancedAbstractClassifier {
             transformOptions.setClassBalancing(false);
 //        }
 
-        int numShapeletsInTransform = Math.min(10 * train.numInstances(), 1000);
+        int numShapeletsInTransform = Math.min(10 * train.numInstances(), 500);
 
         long transformContractTime = TimeUnit.NANOSECONDS.convert(4, TimeUnit.HOURS);
 

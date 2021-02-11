@@ -462,7 +462,7 @@ public class ClassifierLists {
     /**
      * SHAPELET BASED: Classifiers that use shapelets in some way.
      */
-    public static String[] shapelet= {"FastShapelets","LearnShapelets","ShapeletTransformClassifier","ShapeletTreeClassifier","STC","STC1H"};
+    public static String[] shapelet= {"FastShapelets","LearnShapelets","ShapeletTransformClassifier","ShapeletTreeClassifier","STC","STC2","STC1H"};
     public static HashSet<String> shapeletBased=new HashSet<String>( Arrays.asList(shapelet));
     private static Classifier setShapeletBased(Experiments.ExperimentalArguments exp){
         String classifier=exp.classifierName;
@@ -476,6 +476,9 @@ public class ClassifierLists {
                 c=new FastShapelets();
                 break;
             case "ShapeletTransformClassifier": case "STC":
+                c=new ShapeletTransformClassifier();
+                break;
+            case "STC2":
                 c=new ShapeletTransformClassifier();
                 break;
             case "STC1H":
@@ -787,7 +790,7 @@ public class ClassifierLists {
     /**
      * BESPOKE classifiers for particular set ups. Use if you want some special configuration/pipeline
      * not encapsulated within a single classifier      */
-    public static String[] bespoke= {"HIVE-COTE 1.0","HIVE-COTE 2.0","HC2-CIF","HC2-TDE","HC2-ROCKET","HC2-STC","HC2-PF","HC2-MV","HC2-MV2","HIVE-COTE","HC-TDE","HC-CIF","HC1.5","HC-WEASEL","HC-BcSBOSS","HC-cSBOSS","TunedHIVE-COTE","HC-S-BOSS"};
+    public static String[] bespoke= {"HIVE-COTE 1.0","HC1","HIVE-COTE 2.0","HC2","HC2-CIF","HC2-TDE","HC2-ROCKET","HC2-STC","HC2-PF","HC2-MV","HC2-MV2","HIVE-COTE","HC-TDE","HC-CIF","HC1.5","HC-WEASEL","HC-BcSBOSS","HC-cSBOSS","TunedHIVE-COTE","HC-S-BOSS"};
     public static HashSet<String> bespokeClassifiers=new HashSet<String>( Arrays.asList(bespoke));
     private static Classifier setBespokeClassifiers(Experiments.ExperimentalArguments exp){
         String classifier=exp.classifierName,resultsPath="",dataset="";
@@ -801,7 +804,7 @@ public class ClassifierLists {
             dataset=exp.datasetName;
         }
         switch(classifier) {
-            case "HIVE-COTE 1.0":
+            case "HIVE-COTE 1.0": case "HC1":
                 if(canLoadFromFile){
                     String[] cls={"TSF","RISE","STC","cBOSS"};//RotF for ST
                     c=new HIVE_COTE();
@@ -815,7 +818,7 @@ public class ClassifierLists {
                     throw new UnsupportedOperationException("ERROR: currently only loading from file for CAWPE and no results file path has been set. "
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
                 break;
-            case "HIVE-COTE 2.0":
+            case "HIVE-COTE 2.0": case "HC2":
                 if(canLoadFromFile){
                     String[] cls={"DrCIF","TDE","ARSENAL","STC","PF"};//RotF for ST
                     c=new HIVE_COTE();
@@ -1067,7 +1070,7 @@ public class ClassifierLists {
     /**
      * BESPOKE classifiers for particular set ups. Use if you want some special configuration/pipeline
      * not encapsulated within a single classifier      */
-    public static String[] earlyClassification= {"TEASER","eSTC","P85-DrCIF","TEASER-DrCIF","SR1CF1-DrCIF","P85-TDE","TEASER-TDE","SR1CF1-TDE","P85-STC","TEASER-STC","SR1CF1-STC","P85-PF","TEASER-PF","SR1CF1-PF","P85-ROCKET","TEASER-ROCKET","SR1CF1-ROCKET","P85-catch22","TEASER-catch22","SR1CF1-catch22","P85-HC2","TEASER-HC2","SR1CF1-HC2"};
+    public static String[] earlyClassification= {"TEASER","eSTC","P85-CIF","TEASER-CIF","SR1CF1-CIF","P85-DrCIF","TEASER-DrCIF","SR1CF1-DrCIF","P85-TDE","TEASER-TDE","SR1CF1-TDE","P85-STC","TEASER-STC","SR1CF1-STC","P85-PF","TEASER-PF","SR1CF1-PF","P85-ROCKET","TEASER-ROCKET","SR1CF1-ROCKET","P85-catch22","TEASER-catch22","SR1CF1-catch22","P85-HC2","TEASER-HC2","SR1CF1-HC2","P85-HC1","TEASER-HC1","SR1CF1-HC1","P85-TSF","TEASER-TSF","SR1CF1-TSF","P85-RISE","TEASER-RISE","SR1CF1-RISE","P85-ARSENAL","TEASER-ARSENAL","SR1CF1-ARSENAL","P85-cBOSS","TEASER-cBOSS","SR1CF1-cBOSS"};
     public static HashSet<String> earlyClassifiers=new HashSet<String>( Arrays.asList(earlyClassification));
     private static Classifier setEarlyClassifiers(Experiments.ExperimentalArguments exp){
         String classifier=exp.classifierName,resultsPath="",dataset="";
@@ -1088,9 +1091,36 @@ public class ClassifierLists {
                 c = new EarlyDecisionMakerClassifier(new WEASEL(), new TEASER());
                 break;
 
+            case "P85-CIF":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "CIF/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "TEASER-CIF":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "CIF/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "SR1CF1-CIF":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "CIF/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "P85-DrCIF":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new SCIF(), new ProbabilityThreshold());
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "DrCIF/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1099,7 +1129,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "TEASER-DrCIF":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new SCIF(), new TEASER());
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "DrCIF/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1108,7 +1138,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "SR1CF1-DrCIF":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new SCIF(), new SR1CF1());
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "DrCIF/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1117,7 +1147,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "P85-TDE":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new TDE(), new ProbabilityThreshold());
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "TDE/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1126,7 +1156,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "TEASER-TDE":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new TDE(), new TEASER());
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "TDE/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1135,7 +1165,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "SR1CF1-TDE":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new TDE(), new SR1CF1());
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "TDE/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1144,7 +1174,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "P85-STC":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ShapeletTransformClassifier(), new ProbabilityThreshold());
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "STC/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1153,7 +1183,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "TEASER-STC":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ShapeletTransformClassifier(), new TEASER());
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "STC/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1162,7 +1192,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "SR1CF1-STC":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ShapeletTransformClassifier(), new SR1CF1());
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "STC/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1171,7 +1201,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "P85-PF":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ProximityForestWrapper(), new ProbabilityThreshold());
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "PF/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1180,7 +1210,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "TEASER-PF":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ProximityForestWrapper(), new TEASER());
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "PF/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1189,7 +1219,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "SR1CF1-PF":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ProximityForestWrapper(), new SR1CF1());
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "PF/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1198,7 +1228,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "P85-ROCKET":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ROCKETClassifier(), new ProbabilityThreshold());
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "ROCKET/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1207,7 +1237,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "TEASER-ROCKET":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ROCKETClassifier(), new TEASER());
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "ROCKET/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1216,7 +1246,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "SR1CF1-ROCKET":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new ROCKETClassifier(), new SR1CF1());
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "ROCKET/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1225,7 +1255,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "P85-catch22":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new Catch22Classifier(), new ProbabilityThreshold());
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "catch22/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1234,7 +1264,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "TEASER-catch22":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new Catch22Classifier(), new TEASER());
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "catch22/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1243,7 +1273,7 @@ public class ClassifierLists {
                             + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
             case "SR1CF1-catch22":
                 if (canLoadFromFile) {
-                    c = new EarlyDecisionMakerClassifier(new Catch22Classifier(), new SR1CF1());
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "catch22/Predictions/" + dataset + "/");
                     break;
                 }
@@ -1272,6 +1302,141 @@ public class ClassifierLists {
                 if (canLoadFromFile) {
                     c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
                     ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "HC2/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "P85-HC1":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "HC1/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "TEASER-HC1":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "HC1/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "SR1CF1-HC1":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "HC1/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "P85-ARSENAL":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "ARSENAL/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "TEASER-ARSENAL":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "ARSENAL/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "SR1CF1-ARSENAL":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "ARSENAL/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "P85-cBOSS":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "cBOSS/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "TEASER-cBOSS":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "cBOSS/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "SR1CF1-cBOSS":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "cBOSS/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "P85-TSF":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "TSF/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "TEASER-TSF":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "TSF/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "SR1CF1-TSF":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "TSF/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "P85-RISE":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new ProbabilityThreshold());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "RISE/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "TEASER-RISE":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new TEASER());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "RISE/Predictions/" + dataset + "/");
+                    break;
+                }
+                else
+                    throw new UnsupportedOperationException("ERROR: currently only loading from file and no results file path has been set. "
+                            + "Call setClassifier with an ExperimentalArguments object exp with exp.resultsWriteLocation (contains component classifier results) and exp.datasetName set");
+            case "SR1CF1-RISE":
+                if (canLoadFromFile) {
+                    c = new EarlyDecisionMakerClassifier(null, new SR1CF1());
+                    ((EarlyDecisionMakerClassifier) c).setLoadFromFilePath(exp.resultsWriteLocation + "RISE/Predictions/" + dataset + "/");
                     break;
                 }
                 else
