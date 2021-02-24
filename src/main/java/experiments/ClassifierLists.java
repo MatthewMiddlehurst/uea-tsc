@@ -319,28 +319,28 @@ public class ClassifierLists {
                 c=new STSF();
                 break;
             case "SCIF":
-                c=new SCIF();
+                c=new DrCIF();
                 break;
             case "SCIFcv":
-                c=new SCIF();
-                ((SCIF)c).setEstimatorMethod("cv");
+                c=new DrCIF();
+                ((DrCIF)c).setEstimatorMethod("cv");
                 break;
             case "SCIFtrainpred":
-                c=new SCIF();
-                ((SCIF)c).trainpred = true;
+                c=new DrCIF();
+                ((DrCIF)c).trainpred = true;
                 break;
             case "SCIFri":
-                c=new SCIF();
-                ((SCIF)c).reduceIntervals = true;
+                c=new DrCIF();
+                ((DrCIF)c).reduceIntervals = true;
                 break;
             case "SCIFri2":
-                c=new SCIF();
-                ((SCIF)c).reduceIntervals2 = true;
+                c=new DrCIF();
+                ((DrCIF)c).reduceIntervals2 = true;
                 break;
             case "DrCIF-cv":
-                c=new SCIF();
-                ((SCIF)c).reduceIntervals = true;
-                ((SCIF)c).intervalCV = true;
+                c=new DrCIF();
+                ((DrCIF)c).reduceIntervals = true;
+                ((DrCIF)c).intervalCV = true;
                 break;
 //            case "SCIF-B":
 //                c=new SCIF();

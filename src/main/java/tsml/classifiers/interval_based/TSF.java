@@ -24,7 +24,7 @@ import java.util.ArrayList;
 
 import evaluation.storage.ClassifierResults;
 import fileIO.OutFile;
-import machine_learning.classifiers.TimeSeriesTree;
+import machine_learning.classifiers.ContinuousIntervalTree;
 import tsml.classifiers.*;
 import utilities.ClassifierTools;
 import evaluation.evaluators.CrossValidationEvaluator;
@@ -132,7 +132,7 @@ public class TSF extends EnhancedAbstractClassifier implements TechnicalInformat
  
     /** Ensemble members of base classifier, default to random forest RandomTree */
     private ArrayList<Classifier> trees;
-    private Classifier classifier = new TimeSeriesTree();
+    private Classifier classifier = new ContinuousIntervalTree();
  
     /** for each classifier [i]  interval j  starts at intervals[i][j][0] and 
      ends  at  intervals[i][j][1] */
@@ -902,7 +902,7 @@ public class TSF extends EnhancedAbstractClassifier implements TechnicalInformat
 
     @Override
     public boolean createVisualisation() throws Exception {
-        if (!(classifier instanceof TimeSeriesTree)) {
+        if (!(classifier instanceof ContinuousIntervalTree)) {
             System.err.println("TSF temporal importance curve only available for time series tree.");
             return false;
         }
@@ -914,7 +914,7 @@ public class TSF extends EnhancedAbstractClassifier implements TechnicalInformat
 
         double[][] curves = new double[3][seriesLength];
         for (int i = 0; i < trees.size(); i++){
-            TimeSeriesTree tree = (TimeSeriesTree)trees.get(i);
+            ContinuousIntervalTree tree = (ContinuousIntervalTree)trees.get(i);
             ArrayList<Double>[] sg = tree.getTreeSplitsGain();
 
             for (int n = 0; n < sg[0].size(); n++){

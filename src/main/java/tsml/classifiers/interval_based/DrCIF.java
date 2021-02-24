@@ -18,7 +18,8 @@ import evaluation.evaluators.CrossValidationEvaluator;
 import evaluation.storage.ClassifierResults;
 import evaluation.tuning.ParameterSpace;
 import experiments.data.DatasetLoading;
-import machine_learning.classifiers.TimeSeriesTree;
+import machine_learning.classifiers.ContinuousIntervalTree;
+import machine_learning.classifiers.ContinuousIntervalTree.Interval;
 import tsml.classifiers.*;
 import tsml.data_containers.TSCapabilities;
 import tsml.data_containers.TimeSeriesInstance;
@@ -31,10 +32,7 @@ import weka.classifiers.Classifier;
 import weka.core.*;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
@@ -47,7 +45,7 @@ import static utilities.Utilities.argMax;
  *
  * @author Matthew Middlehurst
  **/
-public class SCIF extends EnhancedAbstractClassifier implements TechnicalInformationHandler, TrainTimeContractable,
+public class DrCIF extends EnhancedAbstractClassifier implements TechnicalInformationHandler, TrainTimeContractable,
         Checkpointable, Tuneable, MultiThreadable, Visualisable, Interpretable {
 
     public boolean reduceIntervals = false;
@@ -80,7 +78,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     private int attSubsampleSize = 10;
     private int numAttributes = 29;
     private int startNumAttributes;
-    private ArrayList<ArrayList<Integer>> subsampleAtts;
+    private ArrayList<int[]> subsampleAtts;
 
     /** Normalise outlier catch22 features which break on data not normalised */
     private boolean outlierNorm = true;
@@ -103,10 +101,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
     /** Ensemble members of base classifier, default to TimeSeriesTree */
     private ArrayList<Classifier> trees;
-    private Classifier base= new TimeSeriesTree();
-
-    /** Attributes used in each tree, used to skip transforms for unused attributes/intervals **/
-    private ArrayList<boolean[]> attUsage;
+    private Classifier base= new ContinuousIntervalTree();
 
     /** for each classifier i representation r attribute a interval j  starts at intervals[i][r][a][j][0] and
      ends  at  intervals[i][r][j][1] */
@@ -167,7 +162,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     /**
      * Default constructor for SCIF. Can estimate own performance.
      */
-    public SCIF(){
+    public DrCIF(){
         super(CAN_ESTIMATE_OWN_PERFORMANCE);
     }
 
@@ -440,12 +435,10 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                 numClassifiers = maxClassifiers;
                 trees = new ArrayList<>();
                 intervals = new ArrayList<>();
-                attUsage = new ArrayList<>();
             }
             else{
                 trees = new ArrayList<>(numClassifiers);
                 intervals = new ArrayList<>(numClassifiers);
-                attUsage = new ArrayList<>(numClassifiers);
             }
 
             intervalDimensions = new ArrayList<>();
@@ -535,9 +528,12 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
      * @throws Exception unable to build SCIF
      */
     public void buildSCIF(TimeSeriesInstances[] representations, Instances result) throws Exception {
-        double[][][][] dimensions =  new double[representations.length][][][];
+        double[][][][] dimensions =  new double[numInstances][representations.length][][];
         for (int r = 0; r < representations.length; r++){
-            dimensions[r] = representations[r].toValueArray();
+            double[][][] arr = representations[r].toValueArray();
+            for (int n = 0; n < numInstances; n++) {
+                dimensions[n][r] = arr[n];
+            }
         }
 
         while(withinTrainContract(trainResults.getBuildTime()) && trees.size() < numClassifiers) {
@@ -591,23 +587,38 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             }
 
             //find attributes to subsample
-            subsampleAtts.add(new ArrayList<>());
+//            ArrayList<Integer> arrl = new ArrayList<>(startNumAttributes);
+//            for (int n = 0; n < startNumAttributes; n++){
+//                arrl.add(n);
+//            }
+//
+//            int[] subsampleAtt = new int[numAttributes];
+//            for (int n = 0; n < numAttributes; n++){
+//                subsampleAtt[n] = arrl.remove(rand.nextInt(arrl.size()));
+//            }
+
+            ArrayList<Integer> arrl = new ArrayList<>(startNumAttributes);
             for (int n = 0; n < startNumAttributes; n++){
-                subsampleAtts.get(i).add(n);
+                arrl.add(n);
             }
 
-            while (subsampleAtts.get(i).size() > numAttributes){
-                subsampleAtts.get(i).remove(rand.nextInt(subsampleAtts.get(i).size()));
+            while (arrl.size() > numAttributes){
+                arrl.remove(rand.nextInt(arrl.size()));
+            }
+
+            int[] subsampleAtt = new int[numAttributes];
+            for (int n = 0; n < numAttributes; n++){
+                subsampleAtt[n] = arrl.get(n);
             }
 
             //find dimensions for each interval
-            intervalDimensions.add(new int[representations.length][]);
+            int[][] intervalDimension = new int[representations.length][];
             for (int r = 0; r < representations.length; r++) {
-                intervalDimensions.get(i)[r] = new int[numIntervals[r]];
+                intervalDimension[r] = new int[numIntervals[r]];
                 for (int n = 0; n < numIntervals[r]; n++) {
-                    intervalDimensions.get(i)[r][n] = rand.nextInt(numDimensions);
+                    intervalDimension[r][n] = rand.nextInt(numDimensions);
                 }
-                Arrays.sort(intervalDimensions.get(i)[r]);
+                Arrays.sort(intervalDimension[r]);
             }
 
             //For bagging
@@ -648,18 +659,18 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                 for (int r = 0; r < representations.length; r++) {
                     for (int j = 0; j < numIntervals[r]; j++) {
                         //extract the interval
-                        double[] series = dimensions[r][instIdx][intervalDimensions.get(i)[r][j]];
+                        double[] series = dimensions[instIdx][r][intervalDimension[r][j]];
                         double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0], interval[r][j][1] + 1);
 
                         //process features
                         for (int a = 0; a < numAttributes; a++) {
-                            if (subsampleAtts.get(i).get(a) < 22) {
+                            if (subsampleAtt[a] < 22) {
                                 result.instance(k).setValue(p,
-                                        c22.getSummaryStatByIndex(subsampleAtts.get(i).get(a), j, intervalArray));
+                                        c22.getSummaryStatByIndex(subsampleAtt[a], j, intervalArray));
                             }
                             else {
                                 result.instance(k).setValue(p,
-                                        FeatureSet.calcFeatureByIndex(subsampleAtts.get(i).get(a), interval[r][j][0],
+                                        FeatureSet.calcFeatureByIndex(subsampleAtt[a], interval[r][j][0],
                                                 interval[r][j][1], series));
                             }
 
@@ -676,56 +687,53 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
             tree.buildClassifier(result);
 
-            if (base instanceof TimeSeriesTree) {
-                attUsage.add(((TimeSeriesTree)tree).getAttributesUsed());
-            }
-            else{
-                boolean[] b = new boolean[result.numAttributes()-1];
-                Arrays.fill(b,true);
-                attUsage.add(b);
-            }
-
             if (bagging && getEstimateOwnPerformance()) {
                 long t1 = System.nanoTime();
-                boolean[] usedAtts = attUsage.get(i);
 
-                for (int n = 0; n < numInstances; n++) {
-                    if (inBag[n])
-                        continue;
+                if (base instanceof ContinuousIntervalTree){
+                    for (int n = 0; n < numInstances; n++) {
+                        if (inBag[n])
+                            continue;
 
-                    int p = 0;
-                    for (int r = 0; r < representations.length; r++) {
-                        for (int j = 0; j < numIntervals[r]; j++) {
-                            double[] series = dimensions[r][n][intervalDimensions.get(i)[r][j]];
-                            double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0],
-                                    interval[r][j][1] + 1);
+                        double[] newProbs = ((ContinuousIntervalTree) tree).distributionForInstance(dimensions[n],
+                                functions, interval, subsampleAtt, intervalDimension);
+                        oobCounts[n]++;
+                        for (int k = 0; k < newProbs.length; k++)
+                            trainDistributions[n][k] += newProbs[k];
+                    }
+                }
+                else {
+                    for (int n = 0; n < numInstances; n++) {
+                        if (inBag[n])
+                            continue;
 
-                            for (int a = 0; a < numAttributes; a++) {
-                                if (!usedAtts[p]) {
-                                    testHolder.instance(0).setValue(p, 0);
+                        int p = 0;
+                        for (int r = 0; r < representations.length; r++) {
+                            for (int j = 0; j < numIntervals[r]; j++) {
+                                double[] series = dimensions[n][r][intervalDimension[r][j]];
+                                double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0],
+                                        interval[r][j][1] + 1);
+
+                                for (int a = 0; a < numAttributes; a++) {
+                                    if (subsampleAtt[a] < 22) {
+                                        testHolder.instance(0).setValue(p,
+                                                c22.getSummaryStatByIndex(subsampleAtt[a], j, intervalArray));
+                                    } else {
+                                        testHolder.instance(0).setValue(p,
+                                                FeatureSet.calcFeatureByIndex(subsampleAtt[a],
+                                                        interval[r][j][0], interval[r][j][1], series));
+                                    }
+
                                     p++;
-                                    continue;
                                 }
-
-                                if (subsampleAtts.get(i).get(a) < 22){
-                                    testHolder.instance(0).setValue(p,
-                                            c22.getSummaryStatByIndex(subsampleAtts.get(i).get(a), j, intervalArray));
-                                }
-                                else {
-                                    testHolder.instance(0).setValue(p,
-                                            FeatureSet.calcFeatureByIndex(subsampleAtts.get(i).get(a),
-                                                    interval[r][j][0], interval[r][j][1], series));
-                                }
-
-                                p++;
                             }
                         }
-                    }
 
-                    double[] newProbs = tree.distributionForInstance(testHolder.instance(0));
-                    oobCounts[n]++;
-                    for (int k = 0; k < newProbs.length; k++)
-                        trainDistributions[n][k] += newProbs[k];
+                        double[] newProbs = tree.distributionForInstance(testHolder.instance(0));
+                        oobCounts[n]++;
+                        for (int k = 0; k < newProbs.length; k++)
+                            trainDistributions[n][k] += newProbs[k];
+                    }
                 }
 
                 trainResults.setErrorEstimateTime(trainResults.getErrorEstimateTime() + (System.nanoTime() - t1));
@@ -769,6 +777,8 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
             trees.add(tree);
             intervals.add(interval);
+            subsampleAtts.add(subsampleAtt);
+            intervalDimensions.add(intervalDimension);
 
             //Timed checkpointing if enabled, else checkpoint every 100 trees
             if(checkpoint && ((checkpointTime>0 && System.nanoTime()-lastCheckpointTime>checkpointTime)
@@ -820,7 +830,6 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                 intervals.add(h.interval);
                 subsampleAtts.add(h.subsampleAtts);
                 intervalDimensions.add(h.intervalDimensions);
-                attUsage.add(h.attUsage);
 
                 if (bagging && getEstimateOwnPerformance()){
                     trainResults.setErrorEstimateTime(trainResults.getErrorEstimateTime() + h.errorTime);
@@ -916,7 +925,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             if (seedClassifier)
                 cv.setSeed(seed*5);
             cv.setNumFolds(numFolds);
-            SCIF cif=new SCIF();
+            DrCIF cif=new DrCIF();
             cif.copyParameters(this);
             if (seedClassifier)
                 cif.setSeed(seed*100);
@@ -930,7 +939,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
         else if(estimator== EstimatorMethod.OOB || estimator==EstimatorMethod.NONE){
             /** Build a single new TSF using Bagging, and extract the estimate from this
              */
-            SCIF cif=new SCIF();
+            DrCIF cif=new DrCIF();
             cif.copyParameters(this);
             cif.setSeed(seed*5);
             cif.setEstimateOwnPerformance(true);
@@ -949,7 +958,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
      *
      * @param other A SCIF object
      */
-    private void copyParameters(SCIF other){
+    private void copyParameters(DrCIF other){
         this.numClassifiers = other.numClassifiers;
         this.attSubsampleSize = other.attSubsampleSize;
         this.outlierNorm = other.outlierNorm;
@@ -1006,10 +1015,26 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                 MultiThreadPredictionHolder h = f.get();
                 d[h.c]++;
 
-                if (interpSavePath != null && base instanceof TimeSeriesTree){
+                if (interpSavePath != null && base instanceof ContinuousIntervalTree){
                     interpData.add(h.al);
                     interpTreePreds.add(h.c);
                 }
+            }
+        }
+        else if (base instanceof ContinuousIntervalTree) {
+            for (int i = 0; i < trees.size(); i++) {
+                int c;
+                if (interpSavePath != null) {
+                    ArrayList<double[]> al = new ArrayList<>();
+                    c = (int) ((ContinuousIntervalTree) trees.get(i)).classifyInstance(dimensions, functions,
+                            intervals.get(i), subsampleAtts.get(i), intervalDimensions.get(i), al);
+                    interpData.add(al);
+                    interpTreePreds.add(c);
+                } else {
+                    c = (int) ((ContinuousIntervalTree) trees.get(i)).classifyInstance(dimensions, functions,
+                            intervals.get(i), subsampleAtts.get(i), intervalDimensions.get(i));
+                }
+                d[c]++;
             }
         }
         else {
@@ -1017,7 +1042,6 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             for (int i = 0; i < trees.size(); i++) {
                 Catch22 c22 = new Catch22();
                 c22.setOutlierNormalise(outlierNorm);
-                boolean[] usedAtts = attUsage.get(i);
 
                 int p = 0;
                 for (int r = 0; r < dimensions.length; r++) {
@@ -1027,19 +1051,13 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                                 intervals.get(i)[r][j][1] + 1);
 
                         for (int a = 0; a < numAttributes; a++) {
-                            if (!usedAtts[p]) {
-                                testHolder.instance(0).setValue(p, 0);
-                                p++;
-                                continue;
-                            }
-
-                            if (subsampleAtts.get(i).get(a) < 22){
+                            if (subsampleAtts.get(i)[a] < 22){
                                 testHolder.instance(0).setValue(p,
-                                        c22.getSummaryStatByIndex(subsampleAtts.get(i).get(a), j, intervalArray));
+                                        c22.getSummaryStatByIndex(subsampleAtts.get(i)[a], j, intervalArray));
                             }
                             else {
                                 testHolder.instance(0).setValue(p,
-                                        FeatureSet.calcFeatureByIndex(subsampleAtts.get(i).get(a),
+                                        FeatureSet.calcFeatureByIndex(subsampleAtts.get(i)[a],
                                                 intervals.get(i)[r][j][0], intervals.get(i)[r][j][1], series));
                             }
 
@@ -1048,15 +1066,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                     }
                 }
 
-                int c;
-                if (interpSavePath != null && base instanceof TimeSeriesTree) {
-                    ArrayList<double[]> al = new ArrayList<>();
-                    c = (int) ((TimeSeriesTree) trees.get(i)).classifyInstance(testHolder.instance(0), al);
-                    interpData.add(al);
-                    interpTreePreds.add(c);
-                } else {
-                    c = (int) trees.get(i).classifyInstance(testHolder.instance(0));
-                }
+                int c = (int) trees.get(i).classifyInstance(testHolder.instance(0));
                 d[c]++;
             }
         }
@@ -1188,9 +1198,9 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
      */
     @Override //Checkpointable
     public void copyFromSerObject(Object obj) throws Exception {
-        if (!(obj instanceof SCIF))
+        if (!(obj instanceof DrCIF))
             throw new Exception("The SER file is not an instance of TSF");
-        SCIF saved = ((SCIF)obj);
+        DrCIF saved = ((DrCIF)obj);
         System.out.println("Loading SCIF" + seed + ".ser");
 
         try {
@@ -1209,7 +1219,6 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             //maxIntervalLengthFinder = saved.maxIntervalLengthFinder;
             trees = saved.trees;
             base = saved.base;
-            attUsage = saved.attUsage;
             intervals = saved.intervals;
             //testHolder = saved.testHolder;
             bagging = saved.bagging;
@@ -1539,9 +1548,9 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
     }
 
     /**
-     * Nested class to find and store three simple summary features for an interval
+     * Nested class to find and store seven simple summary features for an interval
      */
-    public static class FeatureSet{
+    private static class FeatureSet{
         public static double calcFeatureByIndex(int idx, int start, int end, double[] data) {
             switch (idx){
                 case 22: return calcMean(start, end, data);
@@ -1582,7 +1591,7 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                 sumYY += data[i] * data[i];
             }
 
-            int length = (end-start)+1;
+            int length = end-start+1;
             return (sumYY-(sumY*sumY)/length)/(length-1);
         }
 
@@ -1652,11 +1661,10 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
      * Class to hold data about a SCIF tree when multi threading.
      */
     private static class MultiThreadBuildHolder {
-        ArrayList<Integer> subsampleAtts;
+        int[] subsampleAtts;
         int[][] intervalDimensions;
         Classifier tree;
         int[][][] interval;
-        boolean[] attUsage;
 
         double[][] trainDistribution;
         int[] oobCounts;
@@ -1742,19 +1750,20 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             }
 
             //find attributes to subsample
-            ArrayList<Integer> subsampleAtts = new ArrayList<>();
+            ArrayList<Integer> arrl = new ArrayList<>(startNumAttributes);
             for (int n = 0; n < startNumAttributes; n++){
-                subsampleAtts.add(n);
+                arrl.add(n);
             }
 
-            while (subsampleAtts.size() > numAttributes){
-                subsampleAtts.remove(rand.nextInt(subsampleAtts.size()));
+            int[] subsampleAtts = new int[numAttributes];
+            for (int n = 0; n < numAttributes; n++){
+                subsampleAtts[n] = arrl.remove(rand.nextInt(arrl.size()));
             }
 
             //find dimensions for each interval
             int[][] intervalDimensions = new int[dimensions.length][];
             for (int r = 0; r < dimensions.length; r++) {
-                intervalDimensions[r]= new int[numIntervals[r]];
+                intervalDimensions[r] = new int[numIntervals[r]];
                 for (int n = 0; n < numIntervals[r]; n++) {
                     intervalDimensions[r][n] = rand.nextInt(numDimensions);
                 }
@@ -1807,13 +1816,13 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
                         //process features
                         for (int a = 0; a < numAttributes; a++) {
-                            if (subsampleAtts.get(a) < 22) {
+                            if (subsampleAtts[a] < 22) {
                                 result.instance(k).setValue(p,
-                                        c22.getSummaryStatByIndex(subsampleAtts.get(a), j, intervalArray));
+                                        c22.getSummaryStatByIndex(subsampleAtts[a], j, intervalArray));
                             }
                             else {
                                 result.instance(k).setValue(p,
-                                        FeatureSet.calcFeatureByIndex(subsampleAtts.get(a), interval[r][j][0],
+                                        FeatureSet.calcFeatureByIndex(subsampleAtts[a], interval[r][j][0],
                                                 interval[r][j][1], series));
                             }
 
@@ -1830,59 +1839,55 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
             tree.buildClassifier(result);
 
-            boolean[] attUsage;
-            if (base instanceof TimeSeriesTree) {
-                attUsage = ((TimeSeriesTree)tree).getAttributesUsed();
-            }
-            else{
-                attUsage = new boolean[result.numAttributes() - 1];
-                Arrays.fill(attUsage,true);
-            }
-
-            h.attUsage = attUsage;
-
             if (bagging && getEstimateOwnPerformance()) {
                 long t1 = System.nanoTime();
                 int[] oobCounts = new int[numInstances];
                 double[][] trainDistributions = new double[numInstances][numClasses];
 
-                for (int n = 0; n < numInstances; n++) {
-                    if (inBag[n])
-                        continue;
+                if (base instanceof ContinuousIntervalTree){
+                    for (int n = 0; n < numInstances; n++) {
+                        if (inBag[n])
+                            continue;
 
-                    int p = 0;
-                    for (int r = 0; r < dimensions.length; r++) {
-                        for (int j = 0; j < numIntervals[r]; j++) {
-                            double[] series = dimensions[r][n][intervalDimensions[r][j]];
-                            double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0],
-                                    interval[r][j][1] + 1);
+                        double[] newProbs = ((ContinuousIntervalTree) tree).distributionForInstance(dimensions[n],
+                                functions, interval, subsampleAtts, intervalDimensions);
+                        oobCounts[n]++;
+                        for (int k = 0; k < newProbs.length; k++)
+                            trainDistributions[n][k] += newProbs[k];
+                    }
+                }
+                else {
+                    for (int n = 0; n < numInstances; n++) {
+                        if (inBag[n])
+                            continue;
 
-                            for (int a = 0; a < numAttributes; a++) {
-                                if (!attUsage[p]) {
-                                    result.instance(0).setValue(p, 0);
+                        int p = 0;
+                        for (int r = 0; r < dimensions.length; r++) {
+                            for (int j = 0; j < numIntervals[r]; j++) {
+                                double[] series = dimensions[r][n][intervalDimensions[r][j]];
+                                double[] intervalArray = Arrays.copyOfRange(series, interval[r][j][0],
+                                        interval[r][j][1] + 1);
+
+                                for (int a = 0; a < numAttributes; a++) {
+                                    if (subsampleAtts[a] < 22) {
+                                        result.instance(0).setValue(p,
+                                                c22.getSummaryStatByIndex(subsampleAtts[a], j, intervalArray));
+                                    } else {
+                                        result.instance(0).setValue(p,
+                                                FeatureSet.calcFeatureByIndex(subsampleAtts[a],
+                                                        interval[r][j][0], interval[r][j][1], series));
+                                    }
+
                                     p++;
-                                    continue;
                                 }
-
-                                if (subsampleAtts.get(a) < 22){
-                                    result.instance(0).setValue(p,
-                                            c22.getSummaryStatByIndex(subsampleAtts.get(a), j, intervalArray));
-                                }
-                                else {
-                                    result.instance(0).setValue(p,
-                                            FeatureSet.calcFeatureByIndex(subsampleAtts.get(a),
-                                                    interval[r][j][0], interval[r][j][1], series));
-                                }
-
-                                p++;
                             }
                         }
-                    }
 
-                    double[] newProbs = tree.distributionForInstance(testHolder.instance(0));
-                    oobCounts[n]++;
-                    for (int k = 0; k < newProbs.length; k++)
-                        trainDistributions[n][k] += newProbs[k];
+                        double[] newProbs = tree.distributionForInstance(testHolder.instance(0));
+                        oobCounts[n]++;
+                        for (int k = 0; k < newProbs.length; k++)
+                            trainDistributions[n][k] += newProbs[k];
+                    }
                 }
 
                 h.oobCounts = oobCounts;
@@ -1929,7 +1934,6 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
 
             Catch22 c22 = new Catch22();
             c22.setOutlierNormalise(outlierNorm);
-            boolean[] usedAtts = attUsage.get(i);
 
             int p = 0;
             for (int r = 0; r < dimensions.length; r++) {
@@ -1939,19 +1943,13 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                             intervals.get(i)[r][j][1] + 1);
 
                     for (int a = 0; a < numAttributes; a++) {
-                        if (!usedAtts[p]) {
-                            testHolder.instance(0).setValue(p, 0);
-                            p++;
-                            continue;
-                        }
-
-                        if (subsampleAtts.get(i).get(a) < 22){
+                        if (subsampleAtts.get(i)[a] < 22){
                             testHolder.instance(0).setValue(p,
-                                    c22.getSummaryStatByIndex(subsampleAtts.get(i).get(a), j, intervalArray));
+                                    c22.getSummaryStatByIndex(subsampleAtts.get(i)[a], j, intervalArray));
                         }
                         else {
                             testHolder.instance(0).setValue(p,
-                                    FeatureSet.calcFeatureByIndex(subsampleAtts.get(i).get(a),
+                                    FeatureSet.calcFeatureByIndex(subsampleAtts.get(i)[a],
                                             intervals.get(i)[r][j][0], intervals.get(i)[r][j][1], series));
                         }
 
@@ -1960,9 +1958,9 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
                 }
             }
 
-            if (interpSavePath != null && base instanceof TimeSeriesTree) {
+            if (interpSavePath != null && base instanceof ContinuousIntervalTree) {
                 ArrayList<double[]> al = new ArrayList<>();
-                h.c = (int) ((TimeSeriesTree) tree).classifyInstance(testHolder.instance(0), al);
+                //h.c = (int) ((ContinuousIntervalTree) tree).classifyInstance(testHolder.instance(0), al);
                 h.al = al;
             } else {
                 h.c = (int) tree.classifyInstance(testHolder.instance(0));
@@ -1970,6 +1968,115 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
             return h;
         }
     }
+
+    /** DrCIF attributes as functions **/
+    public Function<Interval, Double>[] functions = new Function[]{c22_0, c22_1, c22_2, c22_3, c22_4, c22_5, c22_6,
+            c22_7, c22_8, c22_9, c22_10, c22_11, c22_12, c22_13, c22_14, c22_15, c22_16, c22_17, c22_18, c22_19, c22_20,
+            c22_21, mean, median, stdev, slope, iqr, min, max};
+
+    public static final Function<Interval, Double> c22_0 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(0, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_1 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(1, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_2 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(2, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_3 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(3, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_4 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(4, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_5 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(5, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_6 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(6, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_7 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(7, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_8 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(8, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_9 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(9, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_10 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(10, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_11 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(11, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_12 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(12, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_13 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(13, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_14 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(14, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_15 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(15, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_16 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(16, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_17 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(17, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_18 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(18, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_19 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(19, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_20 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(20, intervalArray, true);
+    };
+    public static final Function<Interval, Double> c22_21 = (Interval i) -> {
+        double[] intervalArray = Arrays.copyOfRange(i.series, i.start, i.end + 1);
+        return Catch22.getSummaryStatByIndex(21, intervalArray, true);
+    };
+    public static final Function<Interval, Double> mean = (Interval i) ->
+            FeatureSet.calcFeatureByIndex(22, i.start, i.end, i.series);
+    public static final Function<Interval, Double> median = (Interval i) ->
+            FeatureSet.calcFeatureByIndex(23, i.start, i.end, i.series);
+    public static final Function<Interval, Double> stdev = (Interval i) ->
+            FeatureSet.calcFeatureByIndex(24, i.start, i.end, i.series);
+    public static final Function<Interval, Double> slope = (Interval i) ->
+            FeatureSet.calcFeatureByIndex(25, i.start, i.end, i.series);
+    public static final Function<Interval, Double> iqr = (Interval i) ->
+            FeatureSet.calcFeatureByIndex(26, i.start, i.end, i.series);
+    public static final Function<Interval, Double> min = (Interval i) ->
+            FeatureSet.calcFeatureByIndex(27, i.start, i.end, i.series);
+    public static final Function<Interval, Double> max = (Interval i) ->
+            FeatureSet.calcFeatureByIndex(28, i.start, i.end, i.series);
+
 
     /**
      * Development tests for the SCIF classifier.
@@ -1982,9 +2089,9 @@ public class SCIF extends EnhancedAbstractClassifier implements TechnicalInforma
         String problem="ItalyPowerDemand";
         Instances train= DatasetLoading.loadDataNullable(dataLocation+problem+"\\"+problem+"_TRAIN");
         Instances test= DatasetLoading.loadDataNullable(dataLocation+problem+"\\"+problem+"_TEST");
-        SCIF c = new SCIF();
+        DrCIF c = new DrCIF();
         c.setSeed(0);
-        //c.estimateOwnPerformance = true;
+        c.estimateOwnPerformance = true;
         c.reduceIntervals2 = true;
         //c.intervalCV = true;
         double a;
