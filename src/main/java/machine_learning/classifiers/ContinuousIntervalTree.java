@@ -45,7 +45,7 @@ public class ContinuousIntervalTree extends AbstractClassifier implements Random
     private boolean norm = true;
     //Number of thresholds to try for attribute splits
     private int k = 20;
-    //Max tree dept
+    //Max tree depth
     private int maxDepth = Integer.MAX_VALUE;
 
     private int seed = 0;

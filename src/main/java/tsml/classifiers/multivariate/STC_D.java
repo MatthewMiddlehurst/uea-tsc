@@ -1,9 +1,9 @@
-/* 
+/*
  * This file is part of the UEA Time Series Machine Learning (TSML) toolbox.
  *
- * The UEA TSML toolbox is free software: you can redistribute it and/or 
- * modify it under the terms of the GNU General Public License as published 
- * by the Free Software Foundation, either version 3 of the License, or 
+ * The UEA TSML toolbox is free software: you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * The UEA TSML toolbox is distributed in the hope that it will be useful,
@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License along
  * with the UEA TSML toolbox. If not, see <https://www.gnu.org/licenses/>.
  */
- 
+
 package tsml.classifiers.multivariate;
 
 import evaluation.evaluators.CrossValidationEvaluator;
@@ -48,7 +48,7 @@ import static utilities.InstanceTools.resampleTrainAndTestInstances;
 
 /**
  *
- * 
+ *
  */
 public class STC_D extends EnhancedAbstractClassifier {
 
@@ -57,13 +57,14 @@ public class STC_D extends EnhancedAbstractClassifier {
 
     private int[] redundantFeatures;
     private long transformBuildTime;
+    private String[] classLabels;
 
     public STC_D(){
         super(CAN_ESTIMATE_OWN_PERFORMANCE);
         classifier = new ContractRotationForest();
         classifier.setMaxNumTrees(200);
     }
-        
+
     @Override
     public String getParameters(){
         String paras=transform.getParameters();
@@ -71,10 +72,12 @@ public class STC_D extends EnhancedAbstractClassifier {
         return super.getParameters()+",TransformBuildTime,"+transformBuildTime+
                 ",TransformParas,"+paras+",EnsembleParas,"+ens;
     }
-    
+
     @Override
     public void buildClassifier(TimeSeriesInstances data) throws Exception {
         long startTime = System.nanoTime();
+
+        classLabels = data.getClassLabels();
 
         Instances shapeletData = createTransformData(data);
         transformBuildTime = System.nanoTime()-startTime;
@@ -115,14 +118,14 @@ public class STC_D extends EnhancedAbstractClassifier {
     public void buildClassifier(Instances data) throws Exception {
         buildClassifier(Converter.fromArff(data));
     }
-    
+
     @Override
     public double classifyInstance(TimeSeriesInstance ins) throws Exception{
-        Instances temp = Converter.toArff(transform.transform(ins)).dataset();
+        Instances temp = Converter.toArff(transform.transform(ins), classLabels).dataset();
 
         for(int del: redundantFeatures)
             temp.deleteAttributeAt(del);
-        
+
         Instance test  = temp.get(0);
         return classifier.classifyInstance(test);
     }
@@ -134,11 +137,11 @@ public class STC_D extends EnhancedAbstractClassifier {
 
     @Override
     public double[] distributionForInstance(TimeSeriesInstance ins) throws Exception{
-        Instances temp = Converter.toArff(transform.transform(ins)).dataset();
+        Instances temp = Converter.toArff(transform.transform(ins), classLabels).dataset();
 
         for(int del: redundantFeatures)
             temp.deleteAttributeAt(del);
-        
+
         Instance test  = temp.get(0);
         return classifier.distributionForInstance(test);
     }
