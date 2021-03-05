@@ -388,12 +388,12 @@ public class DrCIF extends EnhancedAbstractClassifier implements TechnicalInform
                 }
 
                 if (minIntervalLengthFinder == null) {
-                    minIntervalLength[r] = 3;
+                    minIntervalLength[r] = 4;
                 } else {
                     minIntervalLength[r] = minIntervalLengthFinder.apply(representations[r].getMaxLength());
                 }
-                if (minIntervalLength[r] < 3) {
-                    minIntervalLength[r] = 3;
+                if (minIntervalLength[r] < 4) {
+                    minIntervalLength[r] = 4;
                 }
                 if (representations[r].getMaxLength() <= minIntervalLength[r]) {
                     minIntervalLength[r] = representations[r].getMaxLength() / 2;
@@ -546,8 +546,9 @@ public class DrCIF extends EnhancedAbstractClassifier implements TechnicalInform
 
                 for (int j = 0; j < numIntervals[r]; j++) {
                     if (rand.nextBoolean()) {
-                        interval[r][j][0] = rand.nextInt(representations[r].getMaxLength() -
-                                minIntervalLength[r]); //Start point
+                        if (representations[r].getMaxLength() - minIntervalLength[r] > 0)
+                            interval[r][j][0] = rand.nextInt(representations[r].getMaxLength() -
+                                    minIntervalLength[r]); //Start point
 
                         int range = Math.min(representations[r].getMaxLength() - interval[r][j][0],
                                 maxIntervalLength[r]);
@@ -556,8 +557,9 @@ public class DrCIF extends EnhancedAbstractClassifier implements TechnicalInform
                         else length = rand.nextInt(range - minIntervalLength[r]) + minIntervalLength[r];
                         interval[r][j][1] = interval[r][j][0] + length;
                     } else {
-                        interval[r][j][1] = rand.nextInt(representations[r].getMaxLength() -
-                                minIntervalLength[r]) + minIntervalLength[r]; //Start point
+                        if (representations[r].getMaxLength() - minIntervalLength[r] > 0)
+                            interval[r][j][1] = rand.nextInt(representations[r].getMaxLength() -
+                                    minIntervalLength[r]) + minIntervalLength[r]; //End point
 
                         int range = Math.min(interval[r][j][1], maxIntervalLength[r]);
                         int length;
@@ -587,28 +589,14 @@ public class DrCIF extends EnhancedAbstractClassifier implements TechnicalInform
             }
 
             //find attributes to subsample
-//            ArrayList<Integer> arrl = new ArrayList<>(startNumAttributes);
-//            for (int n = 0; n < startNumAttributes; n++){
-//                arrl.add(n);
-//            }
-//
-//            int[] subsampleAtt = new int[numAttributes];
-//            for (int n = 0; n < numAttributes; n++){
-//                subsampleAtt[n] = arrl.remove(rand.nextInt(arrl.size()));
-//            }
-
             ArrayList<Integer> arrl = new ArrayList<>(startNumAttributes);
             for (int n = 0; n < startNumAttributes; n++){
                 arrl.add(n);
             }
 
-            while (arrl.size() > numAttributes){
-                arrl.remove(rand.nextInt(arrl.size()));
-            }
-
             int[] subsampleAtt = new int[numAttributes];
             for (int n = 0; n < numAttributes; n++){
-                subsampleAtt[n] = arrl.get(n);
+                subsampleAtt[n] = arrl.remove(rand.nextInt(arrl.size()));
             }
 
             //find dimensions for each interval
